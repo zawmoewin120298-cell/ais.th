@@ -1,0 +1,28 @@
+{
+  "inbounds": [{
+    "port": 10001,
+    "listen": "0.0.0.0",
+    "protocol": "vless",
+    "settings": {
+      "clients": [{
+        "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
+      }],
+      "decryption": "none"
+    },
+    "streamSettings": {
+      "network": "ws",
+      "wsSettings": {
+        "path": "/vpn-ws"
+      }
+    },
+    "sockopt": {
+      "tcpFastOpen": true,
+      "tcpNoDelay": true,
+      "udp": true
+    }
+  }],
+  "outbounds": [{
+    "protocol": "freedom",
+    "settings": {}
+  }]
+}

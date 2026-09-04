@@ -1,0 +1,145 @@
+version: "3.9"
+services:
+  # =============================================
+  # 1. Xray Service (VPN Backend)
+  # =============================================
+  xray:
+    image: ghcr.io/xtls/xray-core:latest
+    container_name: xray
+    restart: unless-stopped
+    volumes:
+      - ./config.json:/etc/xray/config.json:ro
+    command: ["xray", "-config", "/etc/xray/config.json"]
+    ports:
+      - "10001:10001"
+    networks:
+      - cdn-network
+
+  # =============================================
+  # 2. Nginx Base Service
+  # =============================================
+  nginx_base:
+    build:
+      context: .
+    networks:
+      - cdn-network
+
+  # =============================================
+  # 3. Load Balancer
+  # =============================================
+  loadbalancer:
+    extends:
+      service: nginx_base
+    command: ["openresty", "-c", "/usr/local/openresty/nginx/conf/nginx_loadbalancer.conf", "-g", "daemon off;"]
+    ports:
+      - "18080:8080"
+    depends_on:
+      - edge
+      - edge1
+      - edge2
+    networks:
+      - cdn-network
+
+  # =============================================
+  # 4. Backend Services
+  # =============================================
+  backend:
+    extends:
+      service: nginx_base
+    command: ["openresty", "-c", "/usr/local/openresty/nginx/conf/nginx_backend.conf", "-g", "daemon off;"]
+    ports:
+      - "8080:8080"
+    networks:
+      - cdn-network
+
+  backend1:
+    extends:
+      service: nginx_base
+    command: ["openresty", "-c", "/usr/local/openresty/nginx/conf/nginx_backend.conf", "-g", "daemon off;"]
+    ports:
+      - "8180:8080"
+    networks:
+      - cdn-network
+
+  # =============================================
+  # 5. Edge Services (CDN Edge Nodes)
+  # =============================================
+  edge:
+    extends:
+      service: nginx_base
+    command: ["openresty", "-c", "/usr/local/openresty/nginx/conf/nginx_edge.conf", "-g", "daemon off;"]
+    depends_on:
+      - backend
+      - backend1
+      - xray
+    ports:
+      - "8081:8081"   # 8080 ကနေ 8081 ပြောင်းပါ
+    networks:
+      - cdn-network
+
+  edge1:
+    extends:
+      service: nginx_base
+    command: ["openresty", "-c", "/usr/local/openresty/nginx/conf/nginx_edge.conf", "-g", "daemon off;"]
+    depends_on:
+      - backend
+      - backend1
+    ports:
+      - "8082:8080"
+    networks:
+      - cdn-network
+
+  edge2:
+    extends:
+      service: nginx_base
+    command: ["openresty", "-c", "/usr/local/openresty/nginx/conf/nginx_edge.conf", "-g", "daemon off;"]
+    depends_on:
+      - backend
+      - backend1
+    ports:
+      - "8083:8080"
+    networks:
+      - cdn-network
+
+  # =============================================
+  # 6. Monitoring Services (Prometheus & Grafana)
+  # =============================================
+  prometheus:
+    image: prom/prometheus:v2.17.1
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./config:/etc/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - edge
+      - edge1
+      - edge2
+      - backend
+      - backend1
+      - loadbalancer
+    networks:
+      - cdn-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: monitoring_grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "9091:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - cdn-network
+
+# =============================================
+# 7. Network Definition
+# =============================================
+networks:
+  cdn-network:
+    driver: bridge
