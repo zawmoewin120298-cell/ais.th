@@ -14,13 +14,15 @@ RUN echo "net.core.somaxconn = 1024" >> /etc/sysctl.conf && \
     echo "net.ipv4.tcp_keepalive_probes = 5" >> /etc/sysctl.conf
 
 # =============================================
-# 2. Install Xray
+# 2. Install Xray & Cloudflared
 # =============================================
 RUN apk --no-cache add curl unzip \
     && curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip \
     && unzip xray.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/xray \
     && rm xray.zip \
+    && curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared \
+    && chmod +x /usr/local/bin/cloudflared \
     && apk del curl unzip
 
 # =============================================
@@ -45,11 +47,15 @@ COPY ./my-website/ /usr/local/openresty/nginx/html/
 RUN chmod 755 /cache
 
 # =============================================
-# 6. Expose ports
+# 6. Expose ports & Environment Variables
 # =============================================
 EXPOSE 443 53/udp 10001
+ENV TUNNEL_TOKEN=""
 
 # =============================================
 # 7. Start services
 # =============================================
-CMD /usr/local/bin/xray -config /etc/xray/config.json & /usr/local/openresty/bin/openresty -g "daemon off;"
+# Xray, Cloudflared, နှင့် OpenResty တို့ကို ပြိုင်တူ Run ရန်
+CMD /usr/local/bin/xray -config /etc/xray/config.json & \
+    /usr/local/bin/cloudflared tunnel --no-autoupdate run --token ${TUNNEL_TOKEN} & \
+    /usr/local/openresty/bin/openresty -g "daemon off;"
