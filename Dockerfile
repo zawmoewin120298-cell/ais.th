@@ -57,10 +57,11 @@ ENV SECRET_KEY="2e8e4665b45a6abf7a300a09c4acca5fd4455c061305e0574a7b49ebeb1135e6
 # =============================================
 # 6. Start services
 # =============================================
-CMD echo "[playit]" > /root/.config/playit_gg/playit.toml && \
-    echo "secret_key = \"${SECRET_KEY}\"" >> /root/.config/playit_gg/playit.toml && \
-    /usr/local/bin/xray -config /etc/xray/config.json & \
+# =============================================
+# 7. Start services
+# =============================================
+CMD /usr/local/bin/xray -config /etc/xray/config.json & \
     /usr/local/bin/cloudflared tunnel --no-autoupdate run --token ${TUNNEL_TOKEN} & \
-    /usr/local/bin/playit & \
+    /usr/local/bin/playit --secret ${SECRET_KEY} & \
     /usr/local/bin/hysteria server -c /app/hysteria.yaml & \
     /usr/local/openresty/bin/openresty -g "daemon off;"
