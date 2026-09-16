@@ -8,15 +8,12 @@ RUN echo "net.core.somaxconn = 1024" >> /etc/sysctl.conf && \
     echo "net.ipv4.tcp_max_syn_backlog = 1024" >> /etc/sysctl.conf && \
     echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.conf && \
     echo "net.ipv4.tcp_tw_reuse = 1" >> /etc/sysctl.conf && \
-    echo "net.ipv4.tcp_fin_timeout = 30" >> /etc/sysctl.conf && \
-    echo "net.ipv4.tcp_keepalive_time = 300" >> /etc/sysctl.conf && \
-    echo "net.ipv4.tcp_keepalive_intvl = 60" >> /etc/sysctl.conf && \
-    echo "net.ipv4.tcp_keepalive_probes = 5" >> /etc/sysctl.conf
+    echo "net.ipv4.tcp_fin_timeout = 30" >> /etc/sysctl.conf
 
 # =============================================
 # 2. Install Xray, Cloudflared, Playit & Hysteria2
 # =============================================
-RUN apk --no-cache add curl unzip \
+RUN apk --no-cache add curl unzip openssl \
     && curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip \
     && unzip xray.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/xray \
@@ -26,13 +23,15 @@ RUN apk --no-cache add curl unzip \
     && curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 -o /usr/local/bin/playit \
     && chmod +x /usr/local/bin/playit \
     && curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 -o /usr/local/bin/hysteria \
-    && chmod +x /usr/local/bin/hysteria \
-    && apk del curl unzip
+    && chmod +x /usr/local/bin/hysteria
 
 # =============================================
-# 3. Create directories
+# 3. Create directories & Generate Certificate
 # =============================================
-RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app
+RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /root/.config/playit_gg && \
+    openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+    -keyout /app/key.pem -out /app/cert.pem \
+    -subj "/CN=yourdomain.com" -days 36500
 
 # =============================================
 # 4. Copy configuration files
@@ -42,23 +41,13 @@ COPY ./nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
 COPY ./nginx_edge.conf /usr/local/openresty/nginx/conf/nginx_edge.conf
 COPY ./generic_conf/ /usr/local/openresty/nginx/conf/generic_conf/
 COPY ./src/ /usr/local/openresty/nginx/src/
-
-# =============================================
-# 5. Copy Website HTML
-# =============================================
 COPY ./my-website/ /usr/local/openresty/nginx/html/
-
-# =============================================
-# 6. Copy Hysteria2 Config & Certs
-# =============================================
 COPY ./hysteria.yaml /app/hysteria.yaml
-COPY ./cert.pem /app/cert.pem
-COPY ./key.pem /app/key.pem
 
 RUN chmod 755 /cache
 
 # =============================================
-# 7. Expose ports & Environment Variables
+# 5. Expose ports & Environment Variables
 # =============================================
 EXPOSE 443 53/udp 10001 443/udp
 
@@ -66,9 +55,11 @@ ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
 
 # =============================================
-# 8. Start services
+# 6. Start services
 # =============================================
-CMD /usr/local/bin/xray -config /etc/xray/config.json & \
+CMD echo "[playit]" > /root/.config/playit_gg/playit.toml && \
+    echo "secret_key = \"${SECRET_KEY}\"" >> /root/.config/playit_gg/playit.toml && \
+    /usr/local/bin/xray -config /etc/xray/config.json & \
     /usr/local/bin/cloudflared tunnel --no-autoupdate run --token ${TUNNEL_TOKEN} & \
     /usr/local/bin/playit & \
     /usr/local/bin/hysteria server -c /app/hysteria.yaml & \
