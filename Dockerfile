@@ -14,7 +14,7 @@ RUN echo "net.core.somaxconn = 1024" >> /etc/sysctl.conf && \
     echo "net.ipv4.tcp_keepalive_probes = 5" >> /etc/sysctl.conf
 
 # =============================================
-# 2. Install Xray, Cloudflared & Playit Agent
+# 2. Install Xray, Cloudflared, Playit & Hysteria2
 # =============================================
 RUN apk --no-cache add curl unzip \
     && curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip \
@@ -25,12 +25,14 @@ RUN apk --no-cache add curl unzip \
     && chmod +x /usr/local/bin/cloudflared \
     && curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 -o /usr/local/bin/playit \
     && chmod +x /usr/local/bin/playit \
+    && curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 -o /usr/local/bin/hysteria \
+    && chmod +x /usr/local/bin/hysteria \
     && apk del curl unzip
 
 # =============================================
 # 3. Create directories
 # =============================================
-RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html
+RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app
 
 # =============================================
 # 4. Copy configuration files
@@ -46,20 +48,28 @@ COPY ./src/ /usr/local/openresty/nginx/src/
 # =============================================
 COPY ./my-website/ /usr/local/openresty/nginx/html/
 
+# =============================================
+# 6. Copy Hysteria2 Config & Certs
+# =============================================
+COPY ./hysteria.yaml /app/hysteria.yaml
+COPY ./cert.pem /app/cert.pem
+COPY ./key.pem /app/key.pem
+
 RUN chmod 755 /cache
 
 # =============================================
-# 6. Expose ports & Environment Variables
+# 7. Expose ports & Environment Variables
 # =============================================
-EXPOSE 443 53/udp 10001
+EXPOSE 443 53/udp 10001 443/udp
 
 ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
 
 # =============================================
-# 7. Start services
+# 8. Start services
 # =============================================
 CMD /usr/local/bin/xray -config /etc/xray/config.json & \
     /usr/local/bin/cloudflared tunnel --no-autoupdate run --token ${TUNNEL_TOKEN} & \
     /usr/local/bin/playit & \
+    /usr/local/bin/hysteria server -c /app/hysteria.yaml & \
     /usr/local/openresty/bin/openresty -g "daemon off;"
