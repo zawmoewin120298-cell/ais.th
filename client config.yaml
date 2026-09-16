@@ -1,0 +1,10 @@
+server: nicely-dexter.tun.ply.gg:16812
+auth: "YourStrongPassword123"
+tls:
+  sni: yourdomain.com
+  insecure: true
+bandwidth:
+  up: 50 mbps
+  down: 100 mbps
+fastOpen: true
+lazy: true
