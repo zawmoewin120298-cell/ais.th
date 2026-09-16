@@ -14,7 +14,7 @@ RUN echo "net.core.somaxconn = 1024" >> /etc/sysctl.conf && \
     echo "net.ipv4.tcp_keepalive_probes = 5" >> /etc/sysctl.conf
 
 # =============================================
-# 2. Install Xray & Cloudflared
+# 2. Install Xray, Cloudflared & Playit Agent
 # =============================================
 RUN apk --no-cache add curl unzip \
     && curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip \
@@ -23,6 +23,8 @@ RUN apk --no-cache add curl unzip \
     && rm xray.zip \
     && curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared \
     && chmod +x /usr/local/bin/cloudflared \
+    && curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 -o /usr/local/bin/playit \
+    && chmod +x /usr/local/bin/playit \
     && apk del curl unzip
 
 # =============================================
@@ -40,7 +42,7 @@ COPY ./generic_conf/ /usr/local/openresty/nginx/conf/generic_conf/
 COPY ./src/ /usr/local/openresty/nginx/src/
 
 # =============================================
-# 5. Copy Website HTML (အမည်အသစ်)
+# 5. Copy Website HTML
 # =============================================
 COPY ./my-website/ /usr/local/openresty/nginx/html/
 
@@ -50,12 +52,14 @@ RUN chmod 755 /cache
 # 6. Expose ports & Environment Variables
 # =============================================
 EXPOSE 443 53/udp 10001
+
 ENV TUNNEL_TOKEN=""
+ENV SECRET_KEY=""
 
 # =============================================
 # 7. Start services
 # =============================================
-# Xray, Cloudflared, နှင့် OpenResty တို့ကို ပြိုင်တူ Run ရန်
 CMD /usr/local/bin/xray -config /etc/xray/config.json & \
     /usr/local/bin/cloudflared tunnel --no-autoupdate run --token ${TUNNEL_TOKEN} & \
+    /usr/local/bin/playit & \
     /usr/local/openresty/bin/openresty -g "daemon off;"
