@@ -1,0 +1,19 @@
+listen: :443
+
+tls:
+  cert: /app/cert.pem
+  key: /app/key.pem
+
+auth:
+  type: password
+  password: "YourStrongPassword123"
+
+bandwidth:
+  up: 100 mbps
+  down: 100 mbps
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://news.ycombinator.com/
+    rewriteHost: true
