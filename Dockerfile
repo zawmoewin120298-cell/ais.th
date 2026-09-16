@@ -52,7 +52,7 @@ RUN chmod 755 /cache
 EXPOSE 443 53/udp 10001 443/udp
 
 ENV TUNNEL_TOKEN=""
-ENV SECRET_KEY=""
+ENV SECRET_KEY="2e8e4665b45a6abf7a300a09c4acca5fd4455c061305e0574a7b49ebeb1135e6"
 
 # =============================================
 # 6. Start services
