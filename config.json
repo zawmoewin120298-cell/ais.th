@@ -21,8 +21,47 @@
       "udp": true
     }
   }],
-  "outbounds": [{
-    "protocol": "freedom",
-    "settings": {}
-  }]
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct",
+      "settings": {}
+    },
+    {
+      "protocol": "vless", // သို့မဟုတ် vmess
+      "tag": "sin-proxy",
+      "settings": {
+        "vnext": [{
+          "address": "136.110.36.248", // သင့် Singapore Server IP
+          "port": 443,
+          "users": [{
+            "id": "47fcef29-ab4e-4aa6-932b-d95a18f28a4e",
+            "encryption": "none"
+          }]
+        }]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "wsSettings": {
+          "path": "/vpn-ws"
+        }
+      }
+    }
+  ],
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "sin-proxy",
+        "domain": ["geosite:netflix", "geosite:youtube", "geosite:facebook", "geosite:tiktok", "geosite:openai"]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "network": "tcp,udp"
+      }
+    ]
+  }
 }
