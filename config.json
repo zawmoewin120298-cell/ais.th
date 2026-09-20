@@ -32,10 +32,10 @@
       "tag": "sin-proxy",
       "settings": {
         "vnext": [{
-          "address": "136.110.36.248", // သင့် Singapore Server IP
-          "port": 443,
+          "address": "faxf32gkfzoxqv.fx6hsv0.ccwu.cc", // သင့် Singapore Server IP
+          "port": 2087,
           "users": [{
-            "id": "47fcef29-ab4e-4aa6-932b-d95a18f28a4e",
+            "id": "77777777-8a3e-6666-b6d1-a9c5f0e8b3a2",
             "encryption": "none"
           }]
         }]
