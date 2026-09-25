@@ -1,26 +1,40 @@
 {
-  "inbounds": [{
-    "port": 10001,
-    "listen": "0.0.0.0",
-    "protocol": "vless",
-    "settings": {
-      "clients": [{
-        "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
-      }],
-      "decryption": "none"
-    },
-    "streamSettings": {
-      "network": "ws",
-      "wsSettings": {
-        "path": "/vpn-ws"
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "port": 10001,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/vpn-ws"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "udp": true
       }
-    },
-    "sockopt": {
-      "tcpFastOpen": true,
-      "tcpNoDelay": true,
-      "udp": true
     }
-  }],
+  ],
   "outbounds": [
     {
       "protocol": "freedom",
@@ -28,25 +42,9 @@
       "settings": {}
     },
     {
-      "protocol": "vless", // သို့မဟုတ် vmess
-      "tag": "sin-proxy",
-      "settings": {
-        "vnext": [{
-          "address": "faxf32gkfzoxqv.fx6hsv0.ccwu.cc", // သင့် Singapore Server IP
-          "port": 2087,
-          "users": [{
-            "id": "77777777-8a3e-6666-b6d1-a9c5f0e8b3a2",
-            "encryption": "none"
-          }]
-        }]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "security": "tls",
-        "wsSettings": {
-          "path": "/vpn-ws"
-        }
-      }
+      "protocol": "blackhole",
+      "tag": "block",
+      "settings": {}
     }
   ],
   "routing": {
@@ -54,8 +52,10 @@
     "rules": [
       {
         "type": "field",
-        "outboundTag": "sin-proxy",
-        "domain": ["geosite:netflix", "geosite:youtube", "geosite:facebook", "geosite:tiktok", "geosite:openai"]
+        "outboundTag": "block",
+        "domain": [
+          "geosite:category-ads-all"
+        ]
       },
       {
         "type": "field",
