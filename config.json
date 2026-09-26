@@ -25,12 +25,15 @@
         "enabled": true,
         "destOverride": [
           "http",
-          "tls"
+          "tls",
+          "quic"
         ]
       },
       "sockopt": {
         "tcpFastOpen": true,
         "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
         "udp": true
       }
     }
