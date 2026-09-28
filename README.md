@@ -1,3 +1,102 @@
+#vps run code
+
+# Service ကို Enable လုပ်ပါ
+systemctl daemon-reload
+systemctl enable vpn-server.service
+systemctl start vpn-server.service
+
+# Status ကြည့်ပါ
+systemctl status vpn-server.service
+
+# Logs ကြည့်ပါ
+journalctl -u vpn-server.service -f
+
+
+mkdir -p /root/vpn
+cd /root/vpn
+
+# install.sh ဖန်တီး
+nano install.sh
+# (အပေါ်က install.sh Code ကို Paste လုပ်ပါ)
+
+# start.sh ဖန်တီး
+nano start.sh
+# (အပေါ်က start.sh Code ကို Paste လုပ်ပါ)
+
+chmod +x install.sh start.sh
+
+
+bash install.sh
+
+
+
+
+# Xray Config
+nano /etc/xray/config.json
+
+# Hysteria2 Config
+nano /app/hysteria.yaml
+
+# Nginx Config
+nano /usr/local/openresty/nginx/conf/nginx.conf
+
+
+
+dnstt-server -gen-key \
+    -privkey-file /etc/dnstt/server.key \
+    -pubkey-file /etc/dnstt/server.pub
+
+# Public Key ကို ကြည့်ပါ (Client Config အတွက်)
+cat /etc/dnstt/server.pub
+
+
+
+bash start.sh
+
+
+
+# Service ကို ရပ်ပါ
+pkill -f xray
+pkill -f cloudflared
+pkill -f hysteria
+pkill -f dnstt-server
+pkill -f nginx
+
+# Service တစ်ခုချင်း Status ကြည့်ပါ
+ps aux | grep xray
+ps aux | grep cloudflared
+ps aux | grep hysteria
+ps aux | grep dnstt
+
+# Port စစ်ပါ
+netstat -tuln | grep -E "443|53|10001|8000"
+
+# Logs ကြည့်ပါ
+tail -f /var/log/xray.log
+tail -f /var/log/cloudflared.log
+
+
+# UFW Firewall
+ufw allow 22/tcp
+ufw allow 443/tcp
+ufw allow 443/udp
+ufw allow 53/udp
+ufw allow 80/tcp
+ufw enable
+
+
+
+# BBR ရှိမရှိ စစ်ပါ
+sysctl net.ipv4.tcp_available_congestion_control | grep bbr
+
+# မရှိရင် ဒီလိုထည့်ပါ
+echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+sysctl -p
+
+
+
+
 # CDN Up and Running
 
 The objective of this repo is to build a body of knowledge on how CDNs work by coding one from "scratch". The CDN we're going to design uses: nginx, lua, docker, docker-compose, Prometheus, grafana, and wrk.
@@ -5,6 +104,11 @@ The objective of this repo is to build a body of knowledge on how CDNs work by c
 We'll start creating a single backend service and expand from there to a multi-node, latency simulated, observable, and testable CDN. In each section, there are discussions regarding the challenges and trade-offs of building/managing/operating a CDN.
 
 ![grafana screenshot](/img/4.0.1_metrics.webp "grafana screenshot")
+
+
+
+
+
 
 ## What is a CDN?
 
