@@ -51,7 +51,7 @@ RUN curl -L https://dnstt.network/dnstt-server-linux-amd64 \
 # 7. Create Directories
 # =============================================
 RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
-    /root/.config/playit_gg /var/log/supervisor
+    /etc/nginx/cdn /root/.config/playit_gg /var/log/supervisor
 
 # =============================================
 # 8. Generate Self-Signed Cert (Fallback)
@@ -61,7 +61,54 @@ RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -subj "/CN=${DOMAIN:-localhost}" -days 36500
 
 # =============================================
-# 9. Copy Configuration Files
+# 9. Fastly CDN Configuration
+# =============================================
+
+# Fastly IP Ranges (Origin Protection)
+RUN printf 'allow 23.235.32.0/20;\n\
+allow 43.249.72.0/22;\n\
+allow 103.244.50.0/24;\n\
+allow 103.245.222.0/23;\n\
+allow 103.245.224.0/24;\n\
+allow 104.156.80.0/20;\n\
+allow 140.248.64.0/18;\n\
+allow 140.248.128.0/17;\n\
+allow 146.75.0.0/16;\n\
+allow 151.101.0.0/16;\n\
+allow 157.52.64.0/18;\n\
+allow 167.82.0.0/17;\n\
+allow 167.82.128.0/20;\n\
+allow 167.82.160.0/20;\n\
+allow 167.82.224.0/20;\n\
+allow 172.111.64.0/18;\n\
+allow 185.31.16.0/22;\n\
+allow 199.27.72.0/21;\n\
+allow 199.232.0.0/16;\n\
+deny all;\n' > /etc/nginx/cdn/fastly-ips.conf
+
+# Fastly IPv6 Ranges
+RUN printf 'allow 2a04:4e40::/32;\n\
+allow 2a04:4e42::/32;\n\
+deny all;\n' > /etc/nginx/cdn/fastly-ipv6.conf
+
+# Fastly Headers Handling
+RUN printf '# Fastly CDN Headers\n\
+proxy_set_header Fastly-Client-IP $http_fastly_client_ip;\n\
+proxy_set_header Fastly-FF $http_fastly_ff;\n\
+proxy_set_header Fastly-SSL $http_fastly_ssl;\n\
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
+proxy_set_header X-Real-IP $http_fastly_client_ip;\n\
+proxy_set_header X-Forwarded-Proto $scheme;\n\
+proxy_set_header X-Origin-Secret $http_x_origin_secret;\n' > /etc/nginx/cdn/fastly-headers.conf
+
+# Origin Secret Verification (Fastly ကနေ လာတဲ့ Request ဟုတ်မဟုတ် စစ်ဆေးခြင်း)
+RUN printf '# Fastly Origin Secret Check\n\
+if ($http_x_origin_secret != "FASTLY_SECRET_KEY_12345") {\n\
+    return 403;\n\
+}\n' > /etc/nginx/cdn/fastly-origin-check.conf
+
+# =============================================
+# 10. Copy Configuration Files
 # =============================================
 COPY ./config.json /etc/xray/config.json
 COPY ./nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
@@ -74,7 +121,7 @@ COPY ./hysteria.yaml /app/hysteria.yaml
 RUN chmod 755 /cache
 
 # =============================================
-# 10. Startup Script
+# 11. Startup Script
 # =============================================
 RUN printf '#!/bin/bash\n\
 set -e\n\
@@ -88,34 +135,34 @@ sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 \n\
 # Xray (Always)\n\
-echo "[1/5] Starting Xray..."\n\
+echo "[1/6] Starting Xray..."\n\
 /usr/local/bin/xray -config /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
 # Cloudflared (If Token exists)\n\
 if [ -n "$TUNNEL_TOKEN" ]; then\n\
-  echo "[2/5] Starting Cloudflared..."\n\
+  echo "[2/6] Starting Cloudflared..."\n\
   /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token ${TUNNEL_TOKEN} &\n\
   sleep 2\n\
 fi\n\
 \n\
 # Playit (If Secret exists)\n\
 if [ -n "$SECRET_KEY" ]; then\n\
-  echo "[3/5] Starting Playit..."\n\
+  echo "[3/6] Starting Playit..."\n\
   /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
   sleep 1\n\
 fi\n\
 \n\
 # Hysteria2 (VPS Mode Only)\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
-  echo "[4/5] Starting Hysteria2 (VPS Mode)..."\n\
+  echo "[4/6] Starting Hysteria2 (VPS Mode)..."\n\
   /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
   sleep 1\n\
 fi\n\
 \n\
 # dnstt (VPS Mode Only)\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMAIN" ]; then\n\
-  echo "[5/5] Starting dnstt (VPS Mode)..."\n\
+  echo "[5/6] Starting dnstt (VPS Mode)..."\n\
   /usr/local/bin/dnstt-server \\\n\
     -udp :53 \\\n\
     -privkey-file /etc/dnstt/server.key \\\n\
@@ -124,6 +171,7 @@ if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMA
   sleep 1\n\
 fi\n\
 \n\
+echo "[6/6] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
 echo "=========================================="\n\
@@ -132,23 +180,30 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
     && chmod +x /start.sh
 
 # =============================================
-# 11. Ports & Environment Variables
+# 12. Ports & Environment Variables
 # =============================================
 EXPOSE 443 80 10001 443/udp 53/udp
 
+# Cloudflare
 ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
+
+# Fastly
+ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
+ENV FASTLY_ENABLED="false"
+
+# VPS Mode
 ENV VPS_MODE="false"
 ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
 
 # =============================================
-# 12. Health Check
+# 13. Health Check
 # =============================================
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # =============================================
-# 13. Entrypoint
+# 14. Entrypoint
 # =============================================
 CMD ["/start.sh"]
