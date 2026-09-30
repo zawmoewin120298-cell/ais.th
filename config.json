@@ -1,7 +1,42 @@
 {
+  "log": {
+    "loglevel": "warning"
+  },
   "inbounds": [
     {
+      "tag": "ws-in",
       "port": 10001,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/vpn-ws"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"]
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
+      "tag": "xhttp-in",
+      "port": 10002,
       "listen": "0.0.0.0",
       "protocol": "vless",
       "settings": {
@@ -15,18 +50,15 @@
       "streamSettings": {
         "network": "xhttp",
         "xhttpSettings": {
-          "path": "/vpn-ws",
+          "path": "/vpn-xhttp",
           "host": "support.zoom.us",
-          "mode": "auto"
+          "mode": "auto",
+          "noSSEHeader": false
         }
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": [
-          "http",
-          "tls",
-          "quic"
-        ]
+        "destOverride": ["http", "tls", "quic"]
       },
       "sockopt": {
         "tcpFastOpen": true,
@@ -57,9 +89,7 @@
       {
         "type": "field",
         "outboundTag": "block",
-        "domain": [
-          "geosite:category-ads-all"
-        ]
+        "domain": ["geosite:category-ads-all"]
       },
       {
         "type": "field",
