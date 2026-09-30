@@ -1,7 +1,4 @@
 {
-  "log": {
-    "loglevel": "warning"
-  },
   "inbounds": [
     {
       "port": 10001,
@@ -16,9 +13,11 @@
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "ws",
-        "wsSettings": {
-          "path": "/vpn-ws"
+        "network": "xhttp",
+        "xhttpSettings": {
+          "path": "/vpn-ws",
+          "host": "support.zoom.us",
+          "mode": "auto"
         }
       },
       "sniffing": {
