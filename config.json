@@ -51,9 +51,7 @@
         "network": "xhttp",
         "xhttpSettings": {
           "path": "/vpn-xhttp",
-          "host": "support.zoom.us",
-          "mode": "auto",
-          "noSSEHeader": false
+          "mode": "auto"
         }
       },
       "sniffing": {
