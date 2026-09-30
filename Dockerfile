@@ -182,7 +182,7 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
 # =============================================
 # 12. Ports & Environment Variables
 # =============================================
-EXPOSE 443 80 10001 443/udp 53/udp
+EXPOSE 443 80 8080 2053 2086 8443 10002 10001 443/udp 53/udp
 
 # Cloudflare
 ENV TUNNEL_TOKEN=""
