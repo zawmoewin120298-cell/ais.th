@@ -1,0 +1,9 @@
+tunnel: eyJhIjoiNTBlNjY3NDA4YTBjMWQ1MmVmNTBhZmIyNGViNmViOGEiLCJ0IjoiNzA5OTEzMWMtNTZiYS00NGE5LThiMjQtNDkwNTdjYTBjZDdhIiwicyI6Ik16WmlNREpsTnpBdE1qUTBZUzAwTkdNd0xUZ3haak10WWpObU9UQTFZamRpWTJFeSJ9
+credentials-file: /path/to/<tunnel-id>.json
+
+ingress:
+  - hostname: bbr.trueth.kdns.fr
+    service: http://localhost:8080
+    originRequest:
+      disableChunkedEncoding: true
+  - service: http_status:404
