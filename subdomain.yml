@@ -1,32 +1,58 @@
-# VPN Auto Subdomain Switcher Config
-# Latency အနည်းဆုံး subdomain ကို auto ရွေးပါမယ်
+# Cloudflare IP Scanner Config
+# Lowest latency IP ကို auto ရွေးပါမယ်
 
 # ─── VLESS Settings ───────────────────────────────────
 vless:
   uuid: "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
+  domain: "bbr.trueth.kdns.fr"      # SNI / Host (ပြောင်းလို့မရ)
   port: 443
   path: "/vpn-xhttp"
-  mode: "auto"                  # auto / packet-up / stream-up
+  mode: "auto"
   security: "tls"
   insecure: true
 
-# ─── Subdomain List ───────────────────────────────────
-subdomains:
-  - name: bbr1
-    hostname: bbr1.trueth.kdns.fr
-    enabled: true
-  - name: bbr2
-    hostname: bbr2.trueth.kdns.fr
-    enabled: true
-  - name: bbr3
-    hostname: bbr3.trueth.kdns.fr
-    enabled: true
-
-# ─── Settings ─────────────────────────────────────────
+# ─── Scan Settings ────────────────────────────────────
 settings:
-  timeout: 3                    # seconds (connection timeout)
-  samples: 3                    # latency တိုင်းတာတဲ့ အကြိမ်အရေအတွက်
-  interval: 300                 # ၅ မိနစ်တစ်ခါ check
-  config_file: "config.json"    # Sing-box config file
-  outbound_tag: "auto"          # Config ထဲမှာ update လုပ်ရမယ့် selector tag
-  log_file: "switcher.log"      # Log file
+  timeout: 2                        # seconds (TLS handshake timeout)
+  samples: 3                        # latency တိုင်းတဲ့ အကြိမ်အရေအတွက်
+  max_workers: 100                  # concurrent scan threads
+  top_n: 5                          # Top N IP ကို log မှာ ပြ
+  config_file: "config.json"
+  outbound_tag: "auto"              # Selector tag
+  server_outbound_tag: "cf-ip"      # Server update လုပ်ရမယ့် outbound
+  log_file: "scanner.log"
+
+# ─── Cloudflare IP List ───────────────────────────────
+# ဒီ list ကို auto update လုပ်နိုင်တယ် (အောက်မှာ ပြ)
+cloudflare_ips:
+  - 104.16.0.0
+  - 104.17.0.0
+  - 104.18.0.0
+  - 104.19.0.0
+  - 104.20.0.0
+  - 104.21.0.0
+  - 104.22.0.0
+  - 104.23.0.0
+  - 104.24.0.0
+  - 104.25.0.0
+  - 104.26.0.0
+  - 104.27.0.0
+  - 172.64.0.0
+  - 172.65.0.0
+  - 172.66.0.0
+  - 172.67.0.0
+  - 172.68.0.0
+  - 172.69.0.0
+  - 172.70.0.0
+  - 172.71.0.0
+  - 173.245.48.0
+  - 103.21.244.0
+  - 103.22.200.0
+  - 103.31.4.0
+  - 141.101.64.0
+  - 108.162.192.0
+  - 190.93.240.0
+  - 188.114.96.0
+  - 197.234.240.0
+  - 198.41.128.0
+  - 162.158.0.0
