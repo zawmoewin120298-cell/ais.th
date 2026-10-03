@@ -1,0 +1,32 @@
+# VPN Auto Subdomain Switcher Config
+# Latency အနည်းဆုံး subdomain ကို auto ရွေးပါမယ်
+
+# ─── VLESS Settings ───────────────────────────────────
+vless:
+  uuid: "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
+  port: 443
+  path: "/vpn-xhttp"
+  mode: "auto"                  # auto / packet-up / stream-up
+  security: "tls"
+  insecure: true
+
+# ─── Subdomain List ───────────────────────────────────
+subdomains:
+  - name: bbr1
+    hostname: bbr1.trueth.kdns.fr
+    enabled: true
+  - name: bbr2
+    hostname: bbr2.trueth.kdns.fr
+    enabled: true
+  - name: bbr3
+    hostname: bbr3.trueth.kdns.fr
+    enabled: true
+
+# ─── Settings ─────────────────────────────────────────
+settings:
+  timeout: 3                    # seconds (connection timeout)
+  samples: 3                    # latency တိုင်းတာတဲ့ အကြိမ်အရေအတွက်
+  interval: 300                 # ၅ မိနစ်တစ်ခါ check
+  config_file: "config.json"    # Sing-box config file
+  outbound_tag: "auto"          # Config ထဲမှာ update လုပ်ရမယ့် selector tag
+  log_file: "switcher.log"      # Log file
