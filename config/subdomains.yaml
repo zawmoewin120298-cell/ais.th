@@ -1,0 +1,17 @@
+# Subdomain list ကို ဒီမှာ ပြင်ပါ
+subdomains:
+  - name: bbr1
+    hostname: bbr1.trueth.kdns.fr
+    enabled: true
+  - name: bbr2
+    hostname: bbr2.trueth.kdns.fr
+    enabled: true
+  - name: bbr3
+    hostname: bbr3.trueth.kdns.fr
+    enabled: true
+
+settings:
+  timeout: 3
+  port: 443
+  config_file: config/singbox-config.json
+  outbound_tag: proxy
