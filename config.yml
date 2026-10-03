@@ -1,5 +1,5 @@
-tunnel: eyJhIjoiNTBlNjY3NDA4YTBjMWQ1MmVmNTBhZmIyNGViNmViOGEiLCJ0IjoiNzA5OTEzMWMtNTZiYS00NGE5LThiMjQtNDkwNTdjYTBjZDdhIiwicyI6Ik16WmlNREpsTnpBdE1qUTBZUzAwTkdNd0xUZ3haak10WWpObU9UQTFZamRpWTJFeSJ9
-credentials-file: /path/to/<tunnel-id>.json
+tunnel: d09e2876-986d-4dfc-9764-ff6f79da849b
+credentials-file: /path/to/<d09e2876-986d-4dfc-9764-ff6f79da849b>.json
 
 ingress:
   - hostname: bbr.trueth.kdns.fr
