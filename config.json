@@ -4,15 +4,45 @@
   },
   "inbounds": [
     {
-      "tag": "xhttp-in",
-      "listen": "127.0.0.1",
-      "port": 10000,
+      "tag": "ws-in",
+      "port": 10001,
+      "listen": "0.0.0.0",
       "protocol": "vless",
       "settings": {
         "clients": [
           {
-            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
-            "flow": ""
+            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/vpn-ws"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"]
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
+      "tag": "xhttp-in",
+      "port": 10002,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
           }
         ],
         "decryption": "none"
@@ -20,7 +50,6 @@
       "streamSettings": {
         "network": "xhttp",
         "xhttpSettings": {
-          "host": "bbr.trueth.kdns.fr",
           "path": "/vpn-xhttp",
           "mode": "auto"
         }
@@ -28,25 +57,42 @@
       "sniffing": {
         "enabled": true,
         "destOverride": ["http", "tls", "quic"]
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
       }
     }
   ],
   "outbounds": [
     {
+      "protocol": "freedom",
       "tag": "direct",
-      "protocol": "freedom"
+      "settings": {
+        "domainStrategy": "UseIP"
+      }
     },
     {
+      "protocol": "blackhole",
       "tag": "block",
-      "protocol": "blackhole"
+      "settings": {}
     }
   ],
   "routing": {
+    "domainStrategy": "IPIfNonMatch",
     "rules": [
       {
         "type": "field",
-        "ip": ["geoip:private"],
-        "outboundTag": "block"
+        "outboundTag": "block",
+        "domain": ["geosite:category-ads-all"]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "network": "tcp,udp"
       }
     ]
   }
