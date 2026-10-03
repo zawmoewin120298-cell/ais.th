@@ -1,0 +1,87 @@
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "cloudflare",
+        "address": "1.1.1.1",
+        "detour": "auto"
+      },
+      {
+        "tag": "google",
+        "address": "8.8.8.8",
+        "detour": "auto"
+      }
+    ],
+    "final": "cloudflare"
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 2080,
+      "sniff": true
+    },
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "interface_name": "singbox-tun",
+      "inet4_address": "172.19.0.1/30",
+      "auto_route": true,
+      "strict_route": false,
+      "stack": "system",
+      "sniff": true
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "auto",
+      "outbounds": ["cf-ip"],
+      "default": "cf-ip",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "vless",
+      "tag": "cf-ip",
+      "server": "104.16.0.0",
+      "server_port": 443,
+      "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+      "packet_encoding": "xudp",
+      "tls": {
+        "enabled": true,
+        "server_name": "bbr.trueth.kdns.fr",
+        "insecure": true,
+        "alpn": ["h2", "http/1.1"]
+      },
+      "transport": {
+        "type": "xhttp",
+        "host": "bbr.trueth.kdns.fr",
+        "path": "/vpn-xhttp",
+        "mode": "auto"
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {"protocol": "dns", "outbound": "direct"},
+      {"geoip": ["private"], "outbound": "direct"}
+    ],
+    "final": "auto",
+    "auto_detect_interface": true
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "default_mode": "rule"
+    }
+  }
+}
