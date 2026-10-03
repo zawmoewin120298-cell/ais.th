@@ -1,99 +1,102 @@
 {
   "log": {
-    "loglevel": "warning"
+    "level": "info",
+    "timestamp": true
   },
   "inbounds": [
     {
-      "tag": "ws-in",
-      "port": 10001,
-      "listen": "0.0.0.0",
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": {
-          "path": "/vpn-ws"
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
-      },
-      "sockopt": {
-        "tcpFastOpen": true,
-        "tcpNoDelay": true,
-        "tcpMptcp": false,
-        "tcpCongestion": "bbr",
-        "udp": true
-      }
-    },
-    {
-      "tag": "xhttp-in",
-      "port": 10002,
-      "listen": "0.0.0.0",
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "xhttp",
-        "xhttpSettings": {
-          "path": "/vpn-xhttp",
-          "mode": "auto"
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
-      },
-      "sockopt": {
-        "tcpFastOpen": true,
-        "tcpNoDelay": true,
-        "tcpMptcp": false,
-        "tcpCongestion": "bbr",
-        "udp": true
-      }
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 2080,
+      "sniff": true
     }
   ],
   "outbounds": [
     {
-      "protocol": "freedom",
-      "tag": "direct",
-      "settings": {
-        "domainStrategy": "UseIP"
+      "type": "selector",
+      "tag": "auto",
+      "outbounds": ["bbr1", "bbr2", "bbr3"],
+      "default": "bbr1",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "vless",
+      "tag": "bbr1",
+      "server": "bbr1.trueth.kdns.fr",
+      "server_port": 443,
+      "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+      "packet_encoding": "xudp",
+      "tls": {
+        "enabled": true,
+        "server_name": "bbr1.trueth.kdns.fr",
+        "insecure": true,
+        "alpn": ["h2", "http/1.1"]
+      },
+      "transport": {
+        "type": "xhttp",
+        "host": "bbr1.trueth.kdns.fr",
+        "path": "/vpn-xhttp",
+        "mode": "auto"
       }
     },
     {
-      "protocol": "blackhole",
-      "tag": "block",
-      "settings": {}
+      "type": "vless",
+      "tag": "bbr2",
+      "server": "bbr2.trueth.kdns.fr",
+      "server_port": 443,
+      "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+      "packet_encoding": "xudp",
+      "tls": {
+        "enabled": true,
+        "server_name": "bbr2.trueth.kdns.fr",
+        "insecure": true,
+        "alpn": ["h2", "http/1.1"]
+      },
+      "transport": {
+        "type": "xhttp",
+        "host": "bbr2.trueth.kdns.fr",
+        "path": "/vpn-xhttp",
+        "mode": "auto"
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "bbr3",
+      "server": "bbr3.trueth.kdns.fr",
+      "server_port": 443,
+      "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+      "packet_encoding": "xudp",
+      "tls": {
+        "enabled": true,
+        "server_name": "bbr3.trueth.kdns.fr",
+        "insecure": true,
+        "alpn": ["h2", "http/1.1"]
+      },
+      "transport": {
+        "type": "xhttp",
+        "host": "bbr3.trueth.kdns.fr",
+        "path": "/vpn-xhttp",
+        "mode": "auto"
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
     }
   ],
-  "routing": {
-    "domainStrategy": "IPIfNonMatch",
+  "route": {
     "rules": [
-      {
-        "type": "field",
-        "outboundTag": "block",
-        "domain": ["geosite:category-ads-all"]
-      },
-      {
-        "type": "field",
-        "outboundTag": "direct",
-        "network": "tcp,udp"
-      }
-    ]
+      {"protocol": "dns", "outbound": "direct"},
+      {"geoip": ["private"], "outbound": "direct"}
+    ],
+    "final": "auto",
+    "auto_detect_interface": true
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "default_mode": "rule"
+    }
   }
 }
