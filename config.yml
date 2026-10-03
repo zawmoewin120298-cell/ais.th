@@ -1,5 +1,5 @@
-tunnel: d09e2876-986d-4dfc-9764-ff6f79da849b
-credentials-file: /path/to/<d09e2876-986d-4dfc-9764-ff6f79da849b>.json
+tunnel: 7099131c-56ba-44a9-8b24-49057ca0cd7a
+credentials-file: /etc/cloudflared/7099131c-56ba-44a9-8b24-49057ca0cd7a.json
 
 ingress:
   - hostname: bbr.trueth.kdns.fr
