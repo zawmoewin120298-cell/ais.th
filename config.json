@@ -16,66 +16,26 @@
     {
       "type": "selector",
       "tag": "auto",
-      "outbounds": ["bbr1", "bbr2", "bbr3"],
-      "default": "bbr1",
+      "outbounds": ["cf-ip"],
+      "default": "cf-ip",
       "interrupt_exist_connections": false
     },
     {
       "type": "vless",
-      "tag": "bbr1",
-      "server": "bbr1.trueth.kdns.fr",
+      "tag": "cf-ip",
+      "server": "104.16.0.0",
       "server_port": 443,
       "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
       "packet_encoding": "xudp",
       "tls": {
         "enabled": true,
-        "server_name": "bbr1.trueth.kdns.fr",
+        "server_name": "bbr.trueth.kdns.fr",
         "insecure": true,
         "alpn": ["h2", "http/1.1"]
       },
       "transport": {
         "type": "xhttp",
-        "host": "bbr1.trueth.kdns.fr",
-        "path": "/vpn-xhttp",
-        "mode": "auto"
-      }
-    },
-    {
-      "type": "vless",
-      "tag": "bbr2",
-      "server": "bbr2.trueth.kdns.fr",
-      "server_port": 443,
-      "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
-      "packet_encoding": "xudp",
-      "tls": {
-        "enabled": true,
-        "server_name": "bbr2.trueth.kdns.fr",
-        "insecure": true,
-        "alpn": ["h2", "http/1.1"]
-      },
-      "transport": {
-        "type": "xhttp",
-        "host": "bbr2.trueth.kdns.fr",
-        "path": "/vpn-xhttp",
-        "mode": "auto"
-      }
-    },
-    {
-      "type": "vless",
-      "tag": "bbr3",
-      "server": "bbr3.trueth.kdns.fr",
-      "server_port": 443,
-      "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
-      "packet_encoding": "xudp",
-      "tls": {
-        "enabled": true,
-        "server_name": "bbr3.trueth.kdns.fr",
-        "insecure": true,
-        "alpn": ["h2", "http/1.1"]
-      },
-      "transport": {
-        "type": "xhttp",
-        "host": "bbr3.trueth.kdns.fr",
+        "host": "bbr.trueth.kdns.fr",
         "path": "/vpn-xhttp",
         "mode": "auto"
       }
