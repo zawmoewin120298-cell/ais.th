@@ -1,0 +1,21 @@
+{
+  "outbounds": [
+    {
+      "type": "vless",
+      "tag": "proxy",
+      "server": "bbr1.trueth.kdns.fr",
+      "server_port": 443,
+      "uuid": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+      "tls": {
+        "enabled": true,
+        "server_name": "bbr1.trueth.kdns.fr",
+        "insecure": true
+      },
+      "transport": {
+        "type": "xhttp",
+        "path": "/vpn-xhttp",
+        "mode": "auto"
+      }
+    }
+  ]
+}
