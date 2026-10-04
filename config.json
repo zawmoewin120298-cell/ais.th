@@ -1,99 +1,36 @@
 {
-  "log": {
-    "loglevel": "warning"
-  },
-  "inbounds": [
+  "outbounds": [
     {
-      "tag": "ws-in",
-      "port": 10001,
-      "listen": "0.0.0.0",
       "protocol": "vless",
       "settings": {
-        "clients": [
+        "vnext": [
           {
-            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
+            "address": "bbh.trueth.kdns.fr",
+            "port": 443,
+            "users": [
+              {
+                "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+                "encryption": "none"
+              }
+            ]
           }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": {
-          "path": "/vpn-ws"
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
-      },
-      "sockopt": {
-        "tcpFastOpen": true,
-        "tcpNoDelay": true,
-        "tcpMptcp": false,
-        "tcpCongestion": "bbr",
-        "udp": true
-      }
-    },
-    {
-      "tag": "xhttp-in",
-      "port": 10002,
-      "listen": "0.0.0.0",
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009"
-          }
-        ],
-        "decryption": "none"
+        ]
       },
       "streamSettings": {
         "network": "xhttp",
+        "security": "tls",
+        "tlsSettings": {
+          "serverName": "bbh.trueth.kdns.fr",
+          "fingerprint": "chrome",
+          "alpn": ["h2", "http/1.1"]   // H2 သုံးလိုပါက ဒီအတိုင်း
+          // H3 (QUIC) သုံးလိုပါက: "alpn": ["h3"]
+        },
         "xhttpSettings": {
+          "host": "bbh.trueth.kdns.fr",
           "path": "/vpn-xhttp",
-          "mode": "auto"
+          "mode": "auto"               // အလုပ်မလုပ်ရင် "packet-up" သို့ ပြောင်းကြည့်ပါ
         }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
-      },
-      "sockopt": {
-        "tcpFastOpen": true,
-        "tcpNoDelay": true,
-        "tcpMptcp": false,
-        "tcpCongestion": "bbr",
-        "udp": true
       }
     }
-  ],
-  "outbounds": [
-    {
-      "protocol": "freedom",
-      "tag": "direct",
-      "settings": {
-        "domainStrategy": "UseIP"
-      }
-    },
-    {
-      "protocol": "blackhole",
-      "tag": "block",
-      "settings": {}
-    }
-  ],
-  "routing": {
-    "domainStrategy": "IPIfNonMatch",
-    "rules": [
-      {
-        "type": "field",
-        "outboundTag": "block",
-        "domain": ["geosite:category-ads-all"]
-      },
-      {
-        "type": "field",
-        "outboundTag": "direct",
-        "network": "tcp,udp"
-      }
-    ]
-  }
+  ]
 }
