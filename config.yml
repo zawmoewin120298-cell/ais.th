@@ -1,9 +1,6 @@
-tunnel: 7099131c-56ba-44a9-8b24-49057ca0cd7a
-credentials-file: /etc/cloudflared/7099131c-56ba-44a9-8b24-49057ca0cd7a.json
-
 ingress:
   - hostname: bbr.trueth.kdns.fr
     service: http://localhost:8080
     originRequest:
-      disableChunkedEncoding: true
+      noTLSVerify: true
   - service: http_status:404
