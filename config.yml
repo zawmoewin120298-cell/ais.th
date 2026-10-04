@@ -7,8 +7,8 @@ ingress:
   - hostname: bbh.trueth.kdns.fr
     service: http://localhost:10002
     originRequest:
-      http2Origin: true              # ← ဒါ ထည့်
-      disableChunkedEncoding: false  # ← true ကနေ false ပြောင်း
+      http2Origin: true          # ← ဒါ ထည့်
+      disableChunkedEncoding: false
       noTLSVerify: true
 
   - service: http_status:404
