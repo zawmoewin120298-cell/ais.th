@@ -3,8 +3,12 @@ ingress:
     service: http://localhost:8080
     originRequest:
       noTLSVerify: true
+
   - hostname: bbh.trueth.kdns.fr
     service: http://localhost:10002
     originRequest:
-      http2Origin: true   # ← ဒါက အရေးကြီးဆုံး
+      http2Origin: true              # ← ဒါ ထည့်
+      disableChunkedEncoding: false  # ← true ကနေ false ပြောင်း
+      noTLSVerify: true
+
   - service: http_status:404
