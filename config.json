@@ -1,36 +1,133 @@
 {
-  "outbounds": [
+  "log": {
+    "loglevel": "warning",
+    "access": "none"
+  },
+  "inbounds": [
     {
+      "tag": "ws-in",
+      "port": 10001,
+      "listen": "127.0.0.1",
       "protocol": "vless",
       "settings": {
-        "vnext": [
-          {
-            "address": "bbh.trueth.kdns.fr",
-            "port": 443,
-            "users": [
-              {
-                "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
-                "encryption": "none"
-              }
-            ]
-          }
-        ]
+        "clients": [
+          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/vpn-ws",
+          "heartbeatPeriod": 30
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
+      "tag": "xhttp-in",
+      "port": 10002,
+      "listen": "127.0.0.1",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
+        ],
+        "decryption": "none"
       },
       "streamSettings": {
         "network": "xhttp",
-        "security": "tls",
-        "tlsSettings": {
-          "serverName": "bbh.trueth.kdns.fr",
-          "fingerprint": "chrome",
-          "alpn": ["h2", "http/1.1"]   // H2 သုံးလိုပါက ဒီအတိုင်း
-          // H3 (QUIC) သုံးလိုပါက: "alpn": ["h3"]
-        },
         "xhttpSettings": {
           "host": "bbh.trueth.kdns.fr",
           "path": "/vpn-xhttp",
-          "mode": "auto"               // အလုပ်မလုပ်ရင် "packet-up" သို့ ပြောင်းကြည့်ပါ
+          "mode": "auto",
+          "xPaddingBytes": "100-1000",
+          "scMaxBufferedPosts": 30,
+          "scMaxEachPostBytes": 1000000,
+          "noSSEHeader": false
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
       }
     }
-  ]
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct",
+      "settings": { "domainStrategy": "UseIP" },
+      "streamSettings": {
+        "sockopt": {
+          "tcpFastOpen": true,
+          "tcpNoDelay": true,
+          "tcpCongestion": "bbr"
+        }
+      }
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block",
+      "settings": {}
+    }
+  ],
+  "dns": {
+    "servers": [
+      { "address": "1.1.1.1", "domains": ["geosite:geolocation-!cn"] },
+      { "address": "8.8.8.8" }
+    ],
+    "queryStrategy": "UseIPv4"
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "block",
+        "domain": ["geosite:category-ads-all"]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "network": "tcp,udp"
+      }
+    ]
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "handshake": 3,
+        "connIdle": 300,
+        "uplinkOnly": 2,
+        "downlinkOnly": 5,
+        "statsUserUplink": false,
+        "statsUserDownlink": false,
+        "bufferSize": 512
+      }
+    },
+    "system": {
+      "statsInboundUplink": false,
+      "statsInboundDownlink": false
+    }
+  }
 }
