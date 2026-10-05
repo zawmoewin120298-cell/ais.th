@@ -70,6 +70,25 @@
         "tcpCongestion": "bbr",
         "udp": true
       }
+    },
+    {
+      "tag": "http-in",
+      "port": 1080,
+      "listen": "127.0.0.1",
+      "protocol": "http",
+      "settings": {
+        "timeout": 300
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpCongestion": "bbr"
+      }
     }
   ],
   "outbounds": [
