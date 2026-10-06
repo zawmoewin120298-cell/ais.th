@@ -9,6 +9,7 @@ FROM openresty/openresty:1.25.3.1-0-bookworm-fat
 RUN apt-get update && apt-get install -y \
     curl wget unzip openssl ca-certificates \
     iptables iproute2 net-tools procps squid \
+    stunnel4 \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
@@ -52,7 +53,8 @@ RUN curl -L https://dnstt.network/dnstt-server-linux-amd64 \
 # =============================================
 RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
     /etc/nginx/cdn /root/.config/playit_gg /var/log/supervisor \
-    /var/log/squid /var/spool/squid
+    /var/log/squid /var/spool/squid \
+    /etc/stunnel /var/run/stunnel /var/log/stunnel
 
 # =============================================
 # 8. Generate Self-Signed Cert (Fallback)
@@ -104,47 +106,60 @@ if ($http_x_origin_secret != "FASTLY_SECRET_KEY_12345") {\n\
 }\n' > /etc/nginx/cdn/fastly-origin-check.conf
 
 # =============================================
-# 9b. Squid Proxy Configuration (NEW)
+# 9b. Squid Proxy Configuration
 # =============================================
 RUN printf '# ============================================\n\
 # Squid Proxy -> Xray HTTP Inbound\n\
 # ============================================\n\
 http_port 3128\n\
 \n\
-# Xray HTTP inbound (1080) as upstream parent\n\
 cache_peer 127.0.0.1 parent 1080 0 no-query default\n\
 never_direct allow all\n\
 \n\
-# No caching (VPN traffic)\n\
 cache deny all\n\
 cache_mem 0 MB\n\
 \n\
-# Logs\n\
 access_log /var/log/squid/access.log\n\
 cache_log /var/log/squid/cache.log\n\
 \n\
-# Ports\n\
 acl SSL_ports port 443\n\
 acl Safe_ports port 80\n\
 acl Safe_ports port 443\n\
 acl Safe_ports port 8080\n\
 acl CONNECT method CONNECT\n\
 \n\
-# Access\n\
 http_access deny !Safe_ports\n\
 http_access deny CONNECT !SSL_ports\n\
 http_access allow all\n\
 http_access deny all\n\
 \n\
-# DNS\n\
 dns_nameservers 8.8.8.8 1.1.1.1\n\
 visible_hostname proxy\n\
 via off\n\
 forwarded_for delete\n' > /etc/squid/squid.conf
 
-# Squid log/cache dir permissions
 RUN chown -R proxy:proxy /var/log/squid /var/spool/squid /etc/squid && \
     chmod 755 /var/log/squid /var/spool/squid
+
+# =============================================
+# 9c. stunnel Configuration (TLS Tunnel)
+# =============================================
+RUN printf 'foreground = yes\n\
+pid = /var/run/stunnel/stunnel.pid\n\
+debug = 4\n\
+output = /var/log/stunnel/stunnel.log\n\
+\n\
+[ws-tls]\n\
+accept = 8444\n\
+connect = 127.0.0.1:10001\n\
+cert = /app/cert.pem\n\
+key = /app/key.pem\n\
+\n\
+[xhttp-tls]\n\
+accept = 8445\n\
+connect = 127.0.0.1:10002\n\
+cert = /app/cert.pem\n\
+key = /app/key.pem\n' > /etc/stunnel/stunnel.conf
 
 # =============================================
 # 10. Copy Configuration Files
@@ -173,39 +188,44 @@ sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 \n\
 # Xray (Always)\n\
-echo "[1/7] Starting Xray..."\n\
+echo "[1/8] Starting Xray..."\n\
 /usr/local/bin/xray -config /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
 # Squid Proxy (Always)\n\
-echo "[2/7] Starting Squid..."\n\
+echo "[2/8] Starting Squid..."\n\
 /usr/sbin/squid -N -f /etc/squid/squid.conf &\n\
+sleep 1\n\
+\n\
+# stunnel (TLS Tunnel)\n\
+echo "[3/8] Starting stunnel..."\n\
+/usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
 # Cloudflared (If Token exists)\n\
 if [ -n "$TUNNEL_TOKEN" ]; then\n\
-  echo "[3/7] Starting Cloudflared..."\n\
+  echo "[4/8] Starting Cloudflared..."\n\
   /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token ${TUNNEL_TOKEN} &\n\
   sleep 2\n\
 fi\n\
 \n\
 # Playit (If Secret exists)\n\
 if [ -n "$SECRET_KEY" ]; then\n\
-  echo "[4/7] Starting Playit..."\n\
+  echo "[5/8] Starting Playit..."\n\
   /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
   sleep 1\n\
 fi\n\
 \n\
 # Hysteria2 (VPS Mode Only)\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
-  echo "[5/7] Starting Hysteria2 (VPS Mode)..."\n\
+  echo "[6/8] Starting Hysteria2 (VPS Mode)..."\n\
   /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
   sleep 1\n\
 fi\n\
 \n\
 # dnstt (VPS Mode Only)\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMAIN" ]; then\n\
-  echo "[6/7] Starting dnstt (VPS Mode)..."\n\
+  echo "[7/8] Starting dnstt (VPS Mode)..."\n\
   /usr/local/bin/dnstt-server \\\n\
     -udp :53 \\\n\
     -privkey-file /etc/dnstt/server.key \\\n\
@@ -214,7 +234,7 @@ if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMA
   sleep 1\n\
 fi\n\
 \n\
-echo "[7/7] Starting OpenResty..."\n\
+echo "[8/8] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
 echo "=========================================="\n\
@@ -225,7 +245,7 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
 # =============================================
 # 12. Ports & Environment Variables
 # =============================================
-EXPOSE 443 80 8080 2053 2086 8443 10002 10001 3128 443/udp 53/udp
+EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 3128 443/udp 53/udp
 
 # Cloudflare
 ENV TUNNEL_TOKEN=""
