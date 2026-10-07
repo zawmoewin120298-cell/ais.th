@@ -19,7 +19,7 @@
         "network": "ws",
         "wsSettings": {
           "path": "/vpn-ws",
-          "host": "bbr.trueth.kdns.fr",
+          "host": "trueapp-insufficient.true.th",
           "heartbeatPeriod": 30
         }
       },
@@ -50,7 +50,7 @@
       "streamSettings": {
         "network": "xhttp",
         "xhttpSettings": {
-          "host": "bbh.trueth.kdns.fr",
+          "host": "trueapp-insufficient.true.th",
           "path": "/vpn-xhttp",
           "mode": "auto",
           "xPaddingBytes": "100-1000",
