@@ -42,11 +42,18 @@ RUN curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteri
     && chmod +x /usr/local/bin/hysteria
 
 # =============================================
-# 6. Install dnstt (VPS Only)
+# 6. Install dnstt
 # =============================================
 RUN curl -L https://dnstt.network/dnstt-server-linux-amd64 \
     -o /usr/local/bin/dnstt-server \
     && chmod +x /usr/local/bin/dnstt-server
+
+# =============================================
+# 6b. Install GOST (TLS Tunnel) — NEW
+# =============================================
+RUN curl -L https://github.com/ginuerzh/gost/releases/latest/download/gost-linux-amd64 \
+    -o /usr/local/bin/gost \
+    && chmod +x /usr/local/bin/gost
 
 # =============================================
 # 7. Create Directories
@@ -57,7 +64,7 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
     /etc/stunnel /var/run/stunnel /var/log/stunnel
 
 # =============================================
-# 8. Generate Self-Signed Cert (Fallback)
+# 8. Generate Self-Signed Cert
 # =============================================
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
@@ -142,7 +149,7 @@ RUN chown -R proxy:proxy /var/log/squid /var/spool/squid /etc/squid && \
     chmod 755 /var/log/squid /var/spool/squid
 
 # =============================================
-# 9c. stunnel Configuration (TLS Tunnel)
+# 9c. stunnel Configuration
 # =============================================
 RUN printf 'foreground = yes\n\
 pid = /var/run/stunnel/stunnel.pid\n\
@@ -179,7 +186,6 @@ RUN chmod 755 /cache
 # =============================================
 RUN printf '#!/bin/bash\n\
 set -e\n\
-\n\
 echo "=========================================="\n\
 echo "  Starting Services..."\n\
 echo "=========================================="\n\
@@ -187,54 +193,59 @@ echo "=========================================="\n\
 sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 \n\
-# Xray (Always)\n\
-echo "[1/8] Starting Xray..."\n\
+# Xray\n\
+echo "[1/9] Starting Xray..."\n\
 /usr/local/bin/xray -config /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
-# Squid Proxy (Always)\n\
-echo "[2/8] Starting Squid..."\n\
+# Squid\n\
+echo "[2/9] Starting Squid..."\n\
 /usr/sbin/squid -N -f /etc/squid/squid.conf &\n\
 sleep 1\n\
 \n\
-# stunnel (TLS Tunnel)\n\
-echo "[3/8] Starting stunnel..."\n\
+# stunnel\n\
+echo "[3/9] Starting stunnel..."\n\
 /usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
-# Cloudflared (If Token exists)\n\
+# GOST (TLS Tunnel + SOCKS5 + HTTP)\n\
+echo "[4/9] Starting GOST..."\n\
+/usr/local/bin/gost \\\n\
+  -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" \\\n\
+  -L "socks5://:1081" \\\n\
+  -L "http://:8081" \\\n\
+  &\n\
+sleep 1\n\
+\n\
+# Cloudflared\n\
 if [ -n "$TUNNEL_TOKEN" ]; then\n\
-  echo "[4/8] Starting Cloudflared..."\n\
+  echo "[5/9] Starting Cloudflared..."\n\
   /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token ${TUNNEL_TOKEN} &\n\
   sleep 2\n\
 fi\n\
 \n\
-# Playit (If Secret exists)\n\
+# Playit\n\
 if [ -n "$SECRET_KEY" ]; then\n\
-  echo "[5/8] Starting Playit..."\n\
+  echo "[6/9] Starting Playit..."\n\
   /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
   sleep 1\n\
 fi\n\
 \n\
-# Hysteria2 (VPS Mode Only)\n\
+# Hysteria2\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
-  echo "[6/8] Starting Hysteria2 (VPS Mode)..."\n\
+  echo "[7/9] Starting Hysteria2..."\n\
   /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
   sleep 1\n\
 fi\n\
 \n\
-# dnstt (VPS Mode Only)\n\
+# dnstt\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMAIN" ]; then\n\
-  echo "[7/8] Starting dnstt (VPS Mode)..."\n\
-  /usr/local/bin/dnstt-server \\\n\
-    -udp :53 \\\n\
-    -privkey-file /etc/dnstt/server.key \\\n\
-    -domain ${DNSTT_DOMAIN} \\\n\
-    127.0.0.1:8000 &\n\
+  echo "[8/9] Starting dnstt..."\n\
+  /usr/local/bin/dnstt-server -udp :53 -privkey-file /etc/dnstt/server.key -domain ${DNSTT_DOMAIN} 127.0.0.1:8000 &\n\
   sleep 1\n\
 fi\n\
 \n\
-echo "[8/8] Starting OpenResty..."\n\
+echo "[9/9] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
 echo "=========================================="\n\
@@ -243,19 +254,14 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
     && chmod +x /start.sh
 
 # =============================================
-# 12. Ports & Environment Variables
+# 12. Ports & Environment
 # =============================================
-EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 3128 443/udp 53/udp
+EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 3128 1081 8081 443/udp 53/udp
 
-# Cloudflare
 ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
-
-# Fastly
 ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
 ENV FASTLY_ENABLED="false"
-
-# VPS Mode
 ENV VPS_MODE="false"
 ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
