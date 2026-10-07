@@ -52,8 +52,10 @@ RUN curl -L https://dnstt.network/dnstt-server-linux-amd64 \
 # 6b. Install GOST (TLS Tunnel) — NEW
 # =============================================
 RUN curl -L https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz \
-    -o /usr/local/bin/gost \
-    && chmod +x /usr/local/bin/gost
+    -o /tmp/gost.gz \
+    && gunzip -c /tmp/gost.gz > /usr/local/bin/gost \
+    && chmod +x /usr/local/bin/gost \
+    && rm /tmp/gost.gz
 
 # =============================================
 # 7. Create Directories
