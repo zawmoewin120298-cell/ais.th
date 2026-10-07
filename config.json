@@ -19,6 +19,7 @@
         "network": "ws",
         "wsSettings": {
           "path": "/vpn-ws",
+          "host": "bbr.trueth.kdns.fr",
           "heartbeatPeriod": 30
         }
       },
