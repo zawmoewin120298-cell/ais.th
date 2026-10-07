@@ -210,15 +210,17 @@ echo "[3/9] Starting stunnel..."\n\
 /usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
+
 # GOST (TLS Tunnel + SOCKS5 + HTTP)\n\
 echo "[4/9] Starting GOST..."\n\
 /usr/local/bin/gost \\\n\
   -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" \\\n\
   -L "socks5://:1081" \\\n\
   -L "http://:8081" \\\n\
+  -F "http://127.0.0.1:1080" \\\n\
   &\n\
 sleep 1\n\
-\n\
+
 # Cloudflared\n\
 if [ -n "$TUNNEL_TOKEN" ]; then\n\
   echo "[5/9] Starting Cloudflared..."\n\
