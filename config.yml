@@ -1,5 +1,5 @@
 ingress:
-  - hostname: trueapp-insufficient.true.th.trueth.kdns.fr
+  - hostname: bbr.trueth.kdns.fr
     service: http://localhost:8080
     originRequest:
       noTLSVerify: true
