@@ -235,13 +235,12 @@ if [ -n "$SECRET_KEY" ]; then\n\
   sleep 1\n\
 fi\n\
 \n\
-# Hysteria2\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
   echo "[7/9] Starting Hysteria2..."\n\
   /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
   sleep 1\n\
 fi\n\
-\n\
+
 # dnstt\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMAIN" ]; then\n\
   echo "[8/9] Starting dnstt..."\n\
