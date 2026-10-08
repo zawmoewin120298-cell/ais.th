@@ -6,14 +6,20 @@ tls:
 
 auth:
   type: password
-  password: "YourStrongPassword123"
-
-bandwidth:
-  up: 100 mbps
-  down: 100 mbps
+  password: "MyStrongPassword123"
 
 masquerade:
   type: proxy
   proxy:
     url: https://news.ycombinator.com/
     rewriteHost: true
+
+bandwidth:
+  up: 100 mbps
+  down: 500 mbps
+
+quic:
+  initStreamReceiveWindow: 8388608
+  maxStreamReceiveWindow: 8388608
+  initConnReceiveWindow: 20971520
+  maxConnReceiveWindow: 20971520
