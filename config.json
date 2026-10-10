@@ -51,7 +51,7 @@
     {
       "tag": "ws-in",
       "port": 10001,
-      "listen": "127.0.0.1",
+      "listen": "0.0.0.0",
       "protocol": "vless",
       "settings": {
         "clients": [
@@ -82,7 +82,7 @@
     {
       "tag": "xhttp-in",
       "port": 10002,
-      "listen": "127.0.0.1",
+      "listen": "0.0.0.0",
       "protocol": "vless",
       "settings": {
         "clients": [
@@ -118,7 +118,7 @@
     {
       "tag": "http-in",
       "port": 1080,
-      "listen": "127.0.0.1",
+      "listen": "0.0.0.0",
       "protocol": "http",
       "settings": {
         "timeout": 300
