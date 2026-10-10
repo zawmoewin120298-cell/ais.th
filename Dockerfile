@@ -174,12 +174,8 @@ key = /app/key.pem\n' > /etc/stunnel/stunnel.conf
 # 10. Copy Configuration Files
 # =============================================
 COPY ./config.json /etc/xray/config.json
-COPY ./nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY ./nginx_edge.conf /usr/local/openresty/nginx/conf/nginx_edge.conf
-COPY ./generic_conf/ /usr/local/openresty/nginx/conf/generic_conf/
-COPY ./src/ /usr/local/openresty/nginx/src/
-COPY ./my-website/ /usr/local/openresty/nginx/html/
-COPY ./hysteria.yaml /app/hysteria.yaml
+# (Note: For directories like nginx or website, ensure they exist or create empty placeholders if not used)
+RUN mkdir -p /usr/local/openresty/nginx/conf/generic_conf /usr/local/openresty/nginx/src /usr/local/openresty/nginx/html
 
 RUN chmod 755 /cache
 
