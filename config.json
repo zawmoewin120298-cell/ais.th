@@ -23,11 +23,11 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "dl.google.com:443",
+          "dest": "www.true.th:443",
           "xver": 0,
           "serverNames": [
-            "dl.google.com",
-            "www.google.com"
+            "www.true.th",
+            "true.th"
           ],
           "privateKey": "4PWWDXaAGOSE26FcUJgBwvb7KsTgWSgtB8NJHXIYtG4",
           "shortIds": [
