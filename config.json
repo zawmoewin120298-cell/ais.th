@@ -6,7 +6,7 @@
   "inbounds": [
     {
       "tag": "reality-in",
-      "port": 8443,
+      "port": 10003,
       "listen": "[::]",
       "protocol": "vless",
       "settings": {
@@ -29,7 +29,7 @@
             "dl.google.com",
             "www.google.com"
           ],
-          "privateKey": "2879895994b2d9a177dd444973732f9e214fd7777e1aa132768d97e4141f47f1",
+          "privateKey": "4PWWDXaAGOSE26FcUJgBwvb7KsTgWSgtB8NJHXIYtG4",
           "shortIds": [
             "",
             "0123456789abcdef"
@@ -118,7 +118,7 @@
     {
       "tag": "http-in",
       "port": 1080,
-      "listen": "[::]",
+      "listen": "127.0.0.1",
       "protocol": "http",
       "settings": {
         "timeout": 300
