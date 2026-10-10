@@ -23,10 +23,10 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "dl.google.com:443",
+          "dest": "wwww.true.th:443",
           "xver": 0,
           "serverNames": [
-            "www.apple.com",
+            "www.true.th",
             "www.google.com"
           ],
           "privateKey": "4PWWDXaAGOSE26FcUJgBwvb7KsTgWSgtB8NJHXIYtG4",
