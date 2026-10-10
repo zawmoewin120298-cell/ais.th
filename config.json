@@ -23,11 +23,11 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "yahoo.com:443",
+          "dest": "dl.google.com:443",
           "xver": 0,
           "serverNames": [
-            "yahoo.com",
-            "www.yahoo.com"
+            "dl.google.com",
+            "dl.google.com"
           ],
           "privateKey": "2879895994b2d9a177dd444973732f9e214fd7777e1aa132768d97e4141f47f1",
           "shortIds": [
