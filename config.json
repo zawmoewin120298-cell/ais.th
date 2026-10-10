@@ -5,6 +5,50 @@
   },
   "inbounds": [
     {
+      "tag": "reality-in",
+      "port": 443,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "yahoo.com:443",
+          "xver": 0,
+          "serverNames": [
+            "yahoo.com",
+            "www.yahoo.com"
+          ],
+          "privateKey": "YOUR_SERVER_PRIVATE_KEY_HERE",
+          "shortIds": [
+            "",
+            "0123456789abcdef"
+          ]
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
       "tag": "ws-in",
       "port": 10001,
       "listen": "127.0.0.1",
@@ -123,7 +167,7 @@
       {
         "type": "field",
         "outboundTag": "block",
-        "domain": ["geosite:category-ads-all"]
+        "domain": ["geosite:category-ads-all`"]
       },
       {
         "type": "field",
