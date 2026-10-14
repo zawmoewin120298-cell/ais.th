@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domain Fronting Proxy</title>
+    <style>
+        body { font-family: Arial; background: #0f0c29; color: white; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
+        input { background: #302b63; color: white; }
+        button { background: #f5576c; color: white; cursor: pointer; }
+        #output { background: #24243e; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .status { color: #00ff88; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Domain Fronting Proxy</h1>
+        <p>Status: <span class="status">● ONLINE</span></p>
+        <input type="text" id="url-input" placeholder="Enter URL (e.g., https://ifconfig.me)">
+        <button onclick="loadURL()">Go</button>
+        <div id="output">Ready...</div>
+    </div>
+
+    <script>
+        const WORKER_URL = "https://bufisp.zwin73832.workers.dev";
+        
+        async function proxyRequest(url) {
+            try {
+                const response = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
+                const data = await response.text();
+                document.getElementById('output').textContent = data;
+            } catch (error) {
+                document.getElementById('output').textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        function loadURL() {
+            const url = document.getElementById('url-input').value;
+            if (url) {
+                document.getElementById('output').textContent = 'Loading...';
+                proxyRequest(url);
+            } else {
+                document.getElementById('output').textContent = 'Please enter a URL';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "p1",
+    "name": "Product 1",
+    "category": "Electronics",
+    "price": 99.99
+  },
+  {
+    "id": "p2",
+    "name": "Product 2",
+    "category": "Clothing",
+    "price": 49.99
+  }
+]

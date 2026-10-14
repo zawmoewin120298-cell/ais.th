@@ -1,0 +1,192 @@
+{
+  "log": {
+    "loglevel": "warning",
+    "access": "none"
+  },
+  "inbounds": [
+    {
+      "tag": "reality-in",
+      "port": 10003,
+      "listen": "[::]",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "google.com:443",
+          "xver": 0,
+          "serverNames": [
+            "www.true.th.speedtestnet.de5.net",
+            "dl.google.com"
+          ],
+          "privateKey": "4PWWDXaAGOSE26FcUJgBwvb7KsTgWSgtB8NJHXIYtG4",
+          "shortIds": [
+            "",
+            "0123456789abcdef"
+          ]
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
+      "tag": "ws-in",
+      "port": 10001,
+      "listen": "[::]",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/vpn-ws",
+          "heartbeatPeriod": 30
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
+      "tag": "xhttp-in",
+      "port": 10002,
+      "listen": "[::]",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "xhttpSettings": {
+          "host": "bbh.trueth.kdns.fr",
+          "path": "/vpn-xhttp",
+          "mode": "auto",
+          "xPaddingBytes": "100-1000",
+          "scMaxBufferedPosts": 30,
+          "scMaxEachPostBytes": 1000000,
+          "noSSEHeader": false
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
+      "tag": "http-in",
+      "port": 1080,
+      "listen": "127.0.0.1",
+      "protocol": "http",
+      "settings": {
+        "timeout": 300
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpCongestion": "bbr"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct",
+      "settings": { "domainStrategy": "UseIP" },
+      "streamSettings": {
+        "sockopt": {
+          "tcpFastOpen": true,
+          "tcpNoDelay": true,
+          "tcpCongestion": "bbr",
+          "udp": true
+        }
+      }
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block",
+      "settings": {}
+    }
+  ],
+  "dns": {
+    "servers": [
+      { "address": "1.1.1.1", "domains": ["geosite:geolocation-!cn"] },
+      { "address": "8.8.8.8" }
+    ],
+    "queryStrategy": "UseIPv4"
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "network": "tcp,udp"
+      }
+    ]
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "handshake": 3,
+        "connIdle": 300,
+        "uplinkOnly": 2,
+        "downlinkOnly": 5,
+        "statsUserUplink": false,
+        "statsUserDownlink": false,
+        "bufferSize": 512
+      }
+    },
+    "system": {
+      "statsInboundUplink": false,
+      "statsInboundDownlink": false
+    }
+  }
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My CDN Website</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 50px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+        .status {
+            display: inline-block;
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            margin-top: 10px;
+        }
+        .info-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 3px solid #f5576c;
+            text-align: left;
+        }
+        .info-box span {
+            color: #f5576c;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🚀</div>
+        <h1>My CDN Website</h1>
+        <p>ဤသည်မှာ သီးသန့် ဝဘ်ဆိုက်အသစ်ဖြစ်ပါသည်။</p>
+        <p>Port 10001 ပေါ်တွင် သီးခြားလည်ပတ်နေပါသည်။</p>
+        <div class="status">● ONLINE</div>
+        <div class="info-box">
+            <p><span>📌 Server:</span> CDN Domain</p>
+            <p><span>🔌 Port:</span> 10001</p>
+            <p><span>📁 Version:</span> v2.0.0</p>
+            <p><span>🕐 Status:</span> Running</p>
+        </div>
+        <div class="footer">
+            © 2026 My CDN Website. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>
