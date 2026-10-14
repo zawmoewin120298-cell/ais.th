@@ -13,7 +13,7 @@
         "clients": [
           {
             "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
-            "flow": "xtls-rprx-vision"
+            "flow": "xtls-rprx-vision-udp443"
           }
         ],
         "decryption": "none"
@@ -26,7 +26,7 @@
           "dest": "google.com:443",
           "xver": 0,
           "serverNames": [
-            "www.true.th.speedtestnet.de5.net",
+            "www.true.th",
             "dl.google.com"
           ],
           "privateKey": "4PWWDXaAGOSE26FcUJgBwvb7KsTgWSgtB8NJHXIYtG4",
