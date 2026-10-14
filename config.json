@@ -13,7 +13,7 @@
         "clients": [
           {
             "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
-            "flow": "xtls-rprx-vision-udp443"
+            "flow": "xtls-rprx-vision"
           }
         ],
         "decryption": "none"
