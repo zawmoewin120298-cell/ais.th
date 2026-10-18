@@ -55,11 +55,9 @@
         }
       ],
       "transport": {
-        "type": "xhttp",
-        "host": "bbh.trueth.kdns.fr",
+        "type": "ws",
         "path": "/vpn-xhttp",
-        "mode": "auto",
-        "x_padding_bytes": "100-1000"
+        "host": "bbh.trueth.kdns.fr"
       }
     },
     {
