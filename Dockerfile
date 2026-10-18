@@ -13,15 +13,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
+# 2. Install sing-box (Xray အစား)
 # =============================================
-# 2. Install sing-box
-# =============================================
-RUN curl -L https://github.com/SagerNet/sing-box/releases/latest/download/sing-box-1.10.1-linux-amd64.tar.gz -o /tmp/sing-box.tar.gz \
+RUN curl -L https://github.com/SagerNet/sing-box/releases/download/v1.10.1/sing-box-1.10.1-linux-amd64.tar.gz -o /tmp/sing-box.tar.gz \
     && tar -xzf /tmp/sing-box.tar.gz -C /tmp \
     && mv /tmp/sing-box-1.10.1-linux-amd64/sing-box /usr/local/bin/ \
     && chmod +x /usr/local/bin/sing-box \
     && rm -rf /tmp/sing-box*
-    
+
 # =============================================
 # 3. Install Cloudflared
 # =============================================
@@ -120,7 +119,7 @@ if ($http_x_origin_secret != "FASTLY_SECRET_KEY_12345") {\n\
 # 9b. Squid Proxy Configuration
 # =============================================
 RUN printf '# ============================================\n\
-# Squid Proxy -> Xray HTTP Inbound\n\
+# Squid Proxy -> sing-box HTTP Inbound\n\
 # ============================================\n\
 http_port 3128\n\
 \n\
@@ -197,9 +196,9 @@ echo "=========================================="\n\
 sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 \n\
-# Xray\n\
-echo "[1/9] Starting Xray..."\n\
-/usr/local/bin/xray -config /etc/xray/config.json &\n\
+# sing-box\n\
+echo "[1/9] Starting sing-box..."\n\
+/usr/local/bin/sing-box run -c /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
 # Squid (with PID cleanup)\n\
