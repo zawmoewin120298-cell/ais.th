@@ -14,7 +14,7 @@ ARG DOMAIN=localhost
 RUN apt-get update && apt-get install -y \
     curl wget unzip openssl ca-certificates \
     iptables iproute2 net-tools procps squid \
-    stunnel4 \
+    stunnel4 file \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
@@ -41,10 +41,11 @@ RUN curl -L https://github.com/playit-cloud/playit-agent/releases/latest/downloa
     && chmod +x /usr/local/bin/playit
 
 # =============================================
-# 5. Install Hysteria2 (pinned version)
+# 5. Install Hysteria2 (FIXED - latest + verify)
 # =============================================
-RUN curl -L https://github.com/apernet/hysteria/releases/download/v2.6.2/hysteria-linux-amd64 \
+RUN curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 \
     -o /usr/local/bin/hysteria \
+    && file /usr/local/bin/hysteria | grep -q "ELF" \
     && chmod +x /usr/local/bin/hysteria
 
 # =============================================
@@ -72,7 +73,7 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
     /etc/stunnel /var/run/stunnel /var/log/stunnel
 
 # =============================================
-# 8. Generate Self-Signed Cert (using ARG DOMAIN)
+# 8. Generate Self-Signed Cert
 # =============================================
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
@@ -115,7 +116,7 @@ proxy_set_header X-Real-IP $http_fastly_client_ip;\n\
 proxy_set_header X-Forwarded-Proto $scheme;\n\
 proxy_set_header X-Origin-Secret $http_x_origin_secret;\n' > /etc/nginx/cdn/fastly-headers.conf
 
-RUN printf '# Fastly Origin Secret Check (use env var in production)\n\
+RUN printf '# Fastly Origin Secret Check\n\
 if ($http_x_origin_secret != "FASTLY_SECRET_KEY_12345") {\n\
     return 403;\n\
 }\n' > /etc/nginx/cdn/fastly-origin-check.conf
@@ -128,7 +129,6 @@ RUN printf '# ============================================\n\
 # ============================================\n\
 http_port 3128\n\
 \n\
-# sing-box must have an HTTP inbound on 1080 (not SOCKS5)\n\
 cache_peer 127.0.0.1 parent 1080 0 no-query default\n\
 never_direct allow all\n\
 \n\
@@ -207,7 +207,7 @@ echo "[1/9] Starting sing-box..."\n\
 /usr/local/bin/sing-box run -c /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
-# Squid (with PID cleanup)\n\
+# Squid\n\
 echo "[2/9] Starting Squid..."\n\
 rm -f /run/squid.pid\n\
 /usr/sbin/squid -N -f /etc/squid/squid.conf &\n\
@@ -218,15 +218,12 @@ echo "[3/9] Starting stunnel..."\n\
 /usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
-# GOST - separate services (NOT chained together)\n\
+# GOST - separate services\n\
 echo "[4/9] Starting GOST services..."\n\
-# TLS tunnel listener\n\
 /usr/local/bin/gost -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" &\n\
 sleep 1\n\
-# SOCKS5 proxy\n\
 /usr/local/bin/gost -L "socks5://:1081" &\n\
 sleep 1\n\
-# HTTP proxy\n\
 /usr/local/bin/gost -L "http://:8081" &\n\
 sleep 1\n\
 \n\
@@ -237,12 +234,12 @@ if [ -n "$TUNNEL_TOKEN" ]; then\n\
   sleep 2\n\
 fi\n\
 \n\
-# Playit (FIXED: run normally, secret key is read from env/config)\n\
+# Playit (FIXED: write toml first)\n\
 if [ -n "$SECRET_KEY" ]; then\n\
   echo "[6/9] Starting Playit..."\n\
-  # Playit reads SECRET_KEY from environment automatically\n\
-  export SECRET_KEY\n\
-  /usr/local/bin/playit &\n\
+  mkdir -p /root/.config/playit_gg\n\
+  printf "secret_key = \\"%s\\"\\n" "$SECRET_KEY" > /root/.config/playit_gg/playit.toml\n\
+  /usr/local/bin/playit --secret "$SECRET_KEY" &\n\
   sleep 1\n\
 fi\n\
 \n\
@@ -269,11 +266,14 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
     && chmod +x /start.sh
 
 # =============================================
-# 12. Ports & Environment
+# 12. Ports
 # =============================================
 EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 10003 3128 1081 8081 443/udp 53/udp
 
-ENV TUNNEL_TOKEN=""
+# =============================================
+# 13. Environment Variables (သင့်တန်ဖိုးများ)
+# =============================================
+ENV TUNNEL_TOKEN="eyJhIjoiNTBlNjY3NDA4YTBjMWQ1MmVmNTBhZmIyNGViNmViOGEiLCJ0IjoiNzA5OTEzMWMtNTZiYS00NGE5LThiMjQtNDkwNTdjYTBjZDdhIiwicyI6Ik16WmlNREpsTnpBdE1qUTBZUzAwTkdNd0xUZ3haak10WWpObU9UQTFZamRpWTJFeSJ9"
 ENV SECRET_KEY=""
 ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
 ENV FASTLY_ENABLED="false"
@@ -282,12 +282,12 @@ ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
 
 # =============================================
-# 13. Health Check (port 80 instead of 8080)
+# 14. Health Check
 # =============================================
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:80/health || exit 1
 
 # =============================================
-# 14. Entrypoint
+# 15. Entrypoint
 # =============================================
 CMD ["/start.sh"]
