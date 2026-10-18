@@ -13,13 +13,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
-# 2. Install Xray
 # =============================================
-RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o /tmp/xray.zip \
-    && unzip /tmp/xray.zip -d /usr/local/bin/ \
-    && chmod +x /usr/local/bin/xray \
-    && rm /tmp/xray.zip
-
+# 2. Install sing-box
+# =============================================
+RUN curl -L https://github.com/SagerNet/sing-box/releases/latest/download/sing-box-1.10.1-linux-amd64.tar.gz -o /tmp/sing-box.tar.gz \
+    && tar -xzf /tmp/sing-box.tar.gz -C /tmp \
+    && mv /tmp/sing-box-1.10.1-linux-amd64/sing-box /usr/local/bin/ \
+    && chmod +x /usr/local/bin/sing-box \
+    && rm -rf /tmp/sing-box*
+    
 # =============================================
 # 3. Install Cloudflared
 # =============================================
