@@ -1,4 +1,4 @@
-listen: :443
+listen: :10004
 
 tls:
   cert: /app/cert.pem
