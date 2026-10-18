@@ -4,6 +4,11 @@
 FROM openresty/openresty:1.25.3.1-0-bookworm-fat
 
 # =============================================
+# 0. Build Arguments
+# =============================================
+ARG DOMAIN=localhost
+
+# =============================================
 # 1. Install Dependencies
 # =============================================
 RUN apt-get update && apt-get install -y \
@@ -13,11 +18,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
-# 2. Install sing-box (Xray အစား)
+# 2. Install sing-box (v1.11.3 - stable)
 # =============================================
-RUN curl -L https://github.com/SagerNet/sing-box/releases/download/v1.10.1/sing-box-1.10.1-linux-amd64.tar.gz -o /tmp/sing-box.tar.gz \
+RUN curl -L https://github.com/SagerNet/sing-box/releases/download/v1.11.3/sing-box-1.11.3-linux-amd64.tar.gz -o /tmp/sing-box.tar.gz \
     && tar -xzf /tmp/sing-box.tar.gz -C /tmp \
-    && mv /tmp/sing-box-1.10.1-linux-amd64/sing-box /usr/local/bin/ \
+    && mv /tmp/sing-box-1.11.3-linux-amd64/sing-box /usr/local/bin/ \
     && chmod +x /usr/local/bin/sing-box \
     && rm -rf /tmp/sing-box*
 
@@ -36,16 +41,16 @@ RUN curl -L https://github.com/playit-cloud/playit-agent/releases/latest/downloa
     && chmod +x /usr/local/bin/playit
 
 # =============================================
-# 5. Install Hysteria2
+# 5. Install Hysteria2 (pinned version)
 # =============================================
-RUN curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 \
+RUN curl -L https://github.com/apernet/hysteria/releases/download/v2.6.2/hysteria-linux-amd64 \
     -o /usr/local/bin/hysteria \
     && chmod +x /usr/local/bin/hysteria
 
 # =============================================
 # 6. Install dnstt
 # =============================================
-RUN curl -L https://dnstt.network/dnstt-server-linux-amd64 \
+RUN curl -L https://github.com/bamsoftware/dnstt/releases/latest/download/dnstt-server-linux-amd64 \
     -o /usr/local/bin/dnstt-server \
     && chmod +x /usr/local/bin/dnstt-server
 
@@ -67,11 +72,11 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
     /etc/stunnel /var/run/stunnel /var/log/stunnel
 
 # =============================================
-# 8. Generate Self-Signed Cert
+# 8. Generate Self-Signed Cert (using ARG DOMAIN)
 # =============================================
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
-    -subj "/CN=${DOMAIN:-localhost}" -days 36500
+    -subj "/CN=${DOMAIN}" -days 36500
 
 # =============================================
 # 9. Fastly CDN Configuration
@@ -110,7 +115,7 @@ proxy_set_header X-Real-IP $http_fastly_client_ip;\n\
 proxy_set_header X-Forwarded-Proto $scheme;\n\
 proxy_set_header X-Origin-Secret $http_x_origin_secret;\n' > /etc/nginx/cdn/fastly-headers.conf
 
-RUN printf '# Fastly Origin Secret Check\n\
+RUN printf '# Fastly Origin Secret Check (use env var in production)\n\
 if ($http_x_origin_secret != "FASTLY_SECRET_KEY_12345") {\n\
     return 403;\n\
 }\n' > /etc/nginx/cdn/fastly-origin-check.conf
@@ -119,10 +124,11 @@ if ($http_x_origin_secret != "FASTLY_SECRET_KEY_12345") {\n\
 # 9b. Squid Proxy Configuration
 # =============================================
 RUN printf '# ============================================\n\
-# Squid Proxy -> sing-box HTTP Inbound\n\
+# Squid Proxy -> sing-box HTTP Inbound (127.0.0.1:1080)\n\
 # ============================================\n\
 http_port 3128\n\
 \n\
+# sing-box must have an HTTP inbound on 1080 (not SOCKS5)\n\
 cache_peer 127.0.0.1 parent 1080 0 no-query default\n\
 never_direct allow all\n\
 \n\
@@ -185,7 +191,7 @@ COPY ./hysteria.yaml /app/hysteria.yaml
 RUN chmod 755 /cache
 
 # =============================================
-# 11. Startup Script
+# 11. Startup Script (FIXED)
 # =============================================
 RUN printf '#!/bin/bash\n\
 set -e\n\
@@ -212,14 +218,16 @@ echo "[3/9] Starting stunnel..."\n\
 /usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
-# GOST (TLS Tunnel + SOCKS5 + HTTP)\n\
-echo "[4/9] Starting GOST..."\n\
-/usr/local/bin/gost \\\n\
-  -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" \\\n\
-  -L "socks5://:1081" \\\n\
-  -L "http://:8081" \\\n\
-  -F "http://127.0.0.1:1080" \\\n\
-  &\n\
+# GOST - separate services (NOT chained together)\n\
+echo "[4/9] Starting GOST services..."\n\
+# TLS tunnel listener\n\
+/usr/local/bin/gost -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" &\n\
+sleep 1\n\
+# SOCKS5 proxy\n\
+/usr/local/bin/gost -L "socks5://:1081" &\n\
+sleep 1\n\
+# HTTP proxy\n\
+/usr/local/bin/gost -L "http://:8081" &\n\
 sleep 1\n\
 \n\
 # Cloudflared\n\
@@ -229,10 +237,12 @@ if [ -n "$TUNNEL_TOKEN" ]; then\n\
   sleep 2\n\
 fi\n\
 \n\
-# Playit\n\
+# Playit (FIXED: run normally, secret key is read from env/config)\n\
 if [ -n "$SECRET_KEY" ]; then\n\
   echo "[6/9] Starting Playit..."\n\
-  /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
+  # Playit reads SECRET_KEY from environment automatically\n\
+  export SECRET_KEY\n\
+  /usr/local/bin/playit &\n\
   sleep 1\n\
 fi\n\
 \n\
@@ -272,10 +282,10 @@ ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
 
 # =============================================
-# 13. Health Check
+# 13. Health Check (port 80 instead of 8080)
 # =============================================
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:80/health || exit 1
 
 # =============================================
 # 14. Entrypoint
