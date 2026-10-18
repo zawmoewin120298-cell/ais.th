@@ -57,7 +57,9 @@
       "transport": {
         "type": "ws",
         "path": "/vpn-xhttp",
-        "host": "bbh.trueth.kdns.fr"
+        "headers": {
+          "Host": "bbh.trueth.kdns.fr"
+        }
       }
     },
     {
