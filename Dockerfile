@@ -4,27 +4,21 @@
 FROM openresty/openresty:1.25.3.1-0-bookworm-fat
 
 # =============================================
-# 0. Build Arguments
-# =============================================
-ARG DOMAIN=localhost
-
-# =============================================
 # 1. Install Dependencies
 # =============================================
 RUN apt-get update && apt-get install -y \
     curl wget unzip openssl ca-certificates \
     iptables iproute2 net-tools procps squid \
-    stunnel4 file \
+    stunnel4 \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
-# 2. Install sing-box (v1.11.3 - stable)
+# 2. Install Xray
 # =============================================
-RUN curl -L https://github.com/SagerNet/sing-box/releases/download/v1.11.3/sing-box-1.11.3-linux-amd64.tar.gz -o /tmp/sing-box.tar.gz \
-    && tar -xzf /tmp/sing-box.tar.gz -C /tmp \
-    && mv /tmp/sing-box-1.11.3-linux-amd64/sing-box /usr/local/bin/ \
-    && chmod +x /usr/local/bin/sing-box \
-    && rm -rf /tmp/sing-box*
+RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o /tmp/xray.zip \
+    && unzip /tmp/xray.zip -d /usr/local/bin/ \
+    && chmod +x /usr/local/bin/xray \
+    && rm /tmp/xray.zip
 
 # =============================================
 # 3. Install Cloudflared
@@ -41,17 +35,16 @@ RUN curl -L https://github.com/playit-cloud/playit-agent/releases/latest/downloa
     && chmod +x /usr/local/bin/playit
 
 # =============================================
-# 5. Install Hysteria2 (FIXED - latest + verify)
+# 5. Install Hysteria2
 # =============================================
 RUN curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 \
     -o /usr/local/bin/hysteria \
-    && file /usr/local/bin/hysteria | grep -q "ELF" \
     && chmod +x /usr/local/bin/hysteria
 
 # =============================================
 # 6. Install dnstt
 # =============================================
-RUN curl -L https://github.com/bamsoftware/dnstt/releases/latest/download/dnstt-server-linux-amd64 \
+RUN curl -L https://dnstt.network/dnstt-server-linux-amd64 \
     -o /usr/local/bin/dnstt-server \
     && chmod +x /usr/local/bin/dnstt-server
 
@@ -77,7 +70,7 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
 # =============================================
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
-    -subj "/CN=${DOMAIN}" -days 36500
+    -subj "/CN=${DOMAIN:-localhost}" -days 36500
 
 # =============================================
 # 9. Fastly CDN Configuration
@@ -125,7 +118,7 @@ if ($http_x_origin_secret != "FASTLY_SECRET_KEY_12345") {\n\
 # 9b. Squid Proxy Configuration
 # =============================================
 RUN printf '# ============================================\n\
-# Squid Proxy -> sing-box HTTP Inbound (127.0.0.1:1080)\n\
+# Squid Proxy -> Xray HTTP Inbound\n\
 # ============================================\n\
 http_port 3128\n\
 \n\
@@ -191,7 +184,7 @@ COPY ./hysteria.yaml /app/hysteria.yaml
 RUN chmod 755 /cache
 
 # =============================================
-# 11. Startup Script (FIXED)
+# 11. Startup Script
 # =============================================
 RUN printf '#!/bin/bash\n\
 set -e\n\
@@ -202,12 +195,12 @@ echo "=========================================="\n\
 sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 \n\
-# sing-box\n\
-echo "[1/9] Starting sing-box..."\n\
-/usr/local/bin/sing-box run -c /etc/xray/config.json &\n\
+# Xray\n\
+echo "[1/9] Starting Xray..."\n\
+/usr/local/bin/xray -config /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
-# Squid\n\
+# Squid (with PID cleanup)\n\
 echo "[2/9] Starting Squid..."\n\
 rm -f /run/squid.pid\n\
 /usr/sbin/squid -N -f /etc/squid/squid.conf &\n\
@@ -218,13 +211,14 @@ echo "[3/9] Starting stunnel..."\n\
 /usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
-# GOST - separate services\n\
-echo "[4/9] Starting GOST services..."\n\
-/usr/local/bin/gost -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" &\n\
-sleep 1\n\
-/usr/local/bin/gost -L "socks5://:1081" &\n\
-sleep 1\n\
-/usr/local/bin/gost -L "http://:8081" &\n\
+# GOST (TLS Tunnel + SOCKS5 + HTTP)\n\
+echo "[4/9] Starting GOST..."\n\
+/usr/local/bin/gost \\\n\
+  -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" \\\n\
+  -L "socks5://:1081" \\\n\
+  -L "http://:8081" \\\n\
+  -F "http://127.0.0.1:1080" \\\n\
+  &\n\
 sleep 1\n\
 \n\
 # Cloudflared\n\
@@ -234,12 +228,10 @@ if [ -n "$TUNNEL_TOKEN" ]; then\n\
   sleep 2\n\
 fi\n\
 \n\
-# Playit (FIXED: write toml first)\n\
+# Playit\n\
 if [ -n "$SECRET_KEY" ]; then\n\
   echo "[6/9] Starting Playit..."\n\
-  mkdir -p /root/.config/playit_gg\n\
-  printf "secret_key = \\"%s\\"\\n" "$SECRET_KEY" > /root/.config/playit_gg/playit.toml\n\
-  /usr/local/bin/playit --secret "$SECRET_KEY" &\n\
+  /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
   sleep 1\n\
 fi\n\
 \n\
@@ -266,14 +258,11 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
     && chmod +x /start.sh
 
 # =============================================
-# 12. Ports
+# 12. Ports & Environment
 # =============================================
 EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 10003 3128 1081 8081 443/udp 53/udp
 
-# =============================================
-# 13. Environment Variables (သင့်တန်ဖိုးများ)
-# =============================================
-ENV TUNNEL_TOKEN="eyJhIjoiNTBlNjY3NDA4YTBjMWQ1MmVmNTBhZmIyNGViNmViOGEiLCJ0IjoiNzA5OTEzMWMtNTZiYS00NGE5LThiMjQtNDkwNTdjYTBjZDdhIiwicyI6Ik16WmlNREpsTnpBdE1qUTBZUzAwTkdNd0xUZ3haak10WWpObU9UQTFZamRpWTJFeSJ9"
+ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
 ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
 ENV FASTLY_ENABLED="false"
@@ -282,12 +271,12 @@ ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
 
 # =============================================
-# 14. Health Check
+# 13. Health Check
 # =============================================
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:80/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # =============================================
-# 15. Entrypoint
+# 14. Entrypoint
 # =============================================
 CMD ["/start.sh"]
