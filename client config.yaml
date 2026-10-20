@@ -1,4 +1,4 @@
-server: nicely-dexter.tun.ply.gg:16812
+server: maglev.proxy.rlwy.net:49509
 auth: "YourStrongPassword123"
 tls:
   sni: yourdomain.com
