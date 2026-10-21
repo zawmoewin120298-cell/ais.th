@@ -23,11 +23,11 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "assameseshaadi.com:443",
+          "dest": "www.hillrom.com:443",
           "xver": 0,
           "serverNames": [
-            "assameseshaadi.com",
-            "assameseshaadi.com"
+            "www.hillrom.com",
+            "www.hillrom.com"
           ],
           "privateKey": "4PWWDXaAGOSE26FcUJgBwvb7KsTgWSgtB8NJHXIYtG4",
           "shortIds": [
