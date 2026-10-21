@@ -23,11 +23,11 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "google.com:443",
+          "dest": "assameseshaadi.com:443",
           "xver": 0,
           "serverNames": [
-            "www.google.com",
-            "dl.google.com"
+            "assameseshaadi.com",
+            "assameseshaadi.com"
           ],
           "privateKey": "4PWWDXaAGOSE26FcUJgBwvb7KsTgWSgtB8NJHXIYtG4",
           "shortIds": [
