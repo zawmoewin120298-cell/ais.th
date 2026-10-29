@@ -1,10 +1,10 @@
 ingress:
-  - hostname: bbr.trueth.kdns.fr
+  - hostname: www.rtafmith.kdns.fr
     service: http://localhost:8080
     originRequest:
       noTLSVerify: true
 
-  - hostname: bbc.trueth.kdns.fr
+  - hostname: app.rtafmith.kdns.fr
     service: http://localhost:10002
     originRequest:
       http2Origin: true          # ← ဒါ ထည့်
