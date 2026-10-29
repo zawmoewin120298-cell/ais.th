@@ -93,7 +93,7 @@
       "streamSettings": {
         "network": "xhttp",
         "xhttpSettings": {
-          "host": "bbh.trueth.kdns.fr",
+          "host": "app.rtafmith.kdns.fr",
           "path": "/vpn-xhttp",
           "mode": "auto",
           "xPaddingBytes": "100-1000",
