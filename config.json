@@ -12,7 +12,7 @@
       "settings": {
         "clients": [
           {
-            "id": "c3332bfe-ce28-4e1a-e3ed-431decbae7dd",
+            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
             "flow": "xtls-rprx-vision"
           }
         ],
@@ -55,7 +55,7 @@
       "protocol": "vless",
       "settings": {
         "clients": [
-          { "id": "c3332bfe-ce28-4e1a-e3ed-431decbae7dd" }
+          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
         ],
         "decryption": "none"
       },
@@ -86,14 +86,14 @@
       "protocol": "vless",
       "settings": {
         "clients": [
-          { "id": "c3332bfe-ce28-4e1a-e3ed-431decbae7dd" }
+          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
         ],
         "decryption": "none"
       },
       "streamSettings": {
         "network": "xhttp",
         "xhttpSettings": {
-          "host": "www.rtafmith.kdns.fr",
+          "host": "assets.opensignal.com",
           "path": "/vpn-xhttp",
           "mode": "auto",
           "xPaddingBytes": "100-1000",
