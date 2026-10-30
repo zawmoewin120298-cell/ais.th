@@ -116,6 +116,39 @@
       }
     },
     {
+      "tag": "daily-1gb-in",
+      "port": 10005,
+      "listen": "[::]",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          { "id": "c3332bfe-ce28-4e1a-e3ed-431decbae7dd" }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/",
+          "headers": {
+            "Host": "d1kbjm2pod0uyl.cloudfront.net:assets.opensignal.com"
+          }
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": false
+      },
+      "sockopt": {
+        "tcpFastOpen": true,
+        "tcpNoDelay": true,
+        "tcpMptcp": false,
+        "tcpCongestion": "bbr",
+        "udp": true
+      }
+    },
+    {
       "tag": "http-in",
       "port": 1080,
       "listen": "127.0.0.1",
