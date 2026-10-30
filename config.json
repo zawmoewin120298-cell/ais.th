@@ -12,7 +12,7 @@
       "settings": {
         "clients": [
           {
-            "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009",
+            "id": "c3332bfe-ce28-4e1a-e3ed-431decbae7dd",
             "flow": "xtls-rprx-vision"
           }
         ],
@@ -55,7 +55,7 @@
       "protocol": "vless",
       "settings": {
         "clients": [
-          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
+          { "id": "c3332bfe-ce28-4e1a-e3ed-431decbae7dd" }
         ],
         "decryption": "none"
       },
@@ -86,14 +86,14 @@
       "protocol": "vless",
       "settings": {
         "clients": [
-          { "id": "f55ce6cc-3f6b-40fc-9e3b-abe26db17009" }
+          { "id": "c3332bfe-ce28-4e1a-e3ed-431decbae7dd" }
         ],
         "decryption": "none"
       },
       "streamSettings": {
         "network": "xhttp",
         "xhttpSettings": {
-          "host": "app.rtafmith.kdns.fr",
+          "host": "www.rtafmith.kdns.fr",
           "path": "/vpn-xhttp",
           "mode": "auto",
           "xPaddingBytes": "100-1000",
