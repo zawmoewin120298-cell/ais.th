@@ -8,7 +8,7 @@ const zlib = require('zlib');
 
 const PORT = process.env.SERVER_PORT || process.env.PORT || 3000;
 const LOCAL_PORT = 10086;
-const WS_PATH = '/api/v2/telemetry/stream_8f91a';
+const WS_PATH = '/vpn-ws';
 
 // 🔥 သင့်ရဲ့ Cloudflare Token ကို ဒီနေရာမှာ တိုက်ရိုက် ထည့်ထားပါတယ်
 const TUNNEL_TOKEN = "eyJhIjoiNTBlNjY3NDA4YTBjMWQ1MmVmNTBhZmIyNGViNmViOGEiLCJ0IjoiNzA5OTEzMWMtNTZiYS00NGE5LThiMjQtNDkwNTdjYTBjZDdhIiwicyI6Ik16WmlNREpsTnpBdE1qUTBZUzAwTkdNd0xUZ3haak10WWpObU9UQTFZamRpWTJFeSJ9";
