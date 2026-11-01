@@ -1,5 +1,5 @@
 ingress:
-  - hostname: www.rtafmith.kdns.fr
+  - hostname: wetv.vip.rtafmith.kdns.fr
     service: http://localhost:8080
     originRequest:
       noTLSVerify: true
