@@ -1,10 +1,10 @@
 ingress:
-  - hostname: puui.wetvinfo.com.rtafmith.kdns.fr
+  - hostname: wetv.rtafmith.kdns.fr
     service: http://localhost:8080
     originRequest:
       noTLSVerify: true
 
-  - hostname: app.rtafmith.kdns.fr
+  - hostname: wetv.rtafmith.kdns.fr
     service: http://localhost:10002
     originRequest:
       http2Origin: true          # ← ဒါ ထည့်
