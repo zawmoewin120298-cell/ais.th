@@ -260,7 +260,7 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
 # =============================================
 # 12. Ports & Environment
 # =============================================
-EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 10003 3128 1081 8081 443/udp 53/udp
+EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 10003 8080 1081 8081 443/udp 53/udp
 
 ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
