@@ -35,6 +35,14 @@ RUN curl -L https://github.com/playit-cloud/playit-agent/releases/latest/downloa
     && chmod +x /usr/local/bin/playit
 
 # =============================================
+# 4b. Install Ngrok
+# =============================================
+RUN curl -L https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o /tmp/ngrok.tgz \
+    && tar xvzf /tmp/ngrok.tgz -C /usr/local/bin \
+    && chmod +x /usr/local/bin/ngrok \
+    && rm /tmp/ngrok.tgz
+
+# =============================================
 # 5. Install Hysteria2
 # =============================================
 RUN curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 \
@@ -196,23 +204,23 @@ sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 \n\
 # Xray\n\
-echo "[1/9] Starting Xray..."\n\
+echo "[1/10] Starting Xray..."\n\
 /usr/local/bin/xray -config /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
 # Squid (with PID cleanup)\n\
-echo "[2/9] Starting Squid..."\n\
+echo "[2/10] Starting Squid..."\n\
 rm -f /run/squid.pid\n\
 /usr/sbin/squid -N -f /etc/squid/squid.conf &\n\
 sleep 1\n\
 \n\
 # stunnel\n\
-echo "[3/9] Starting stunnel..."\n\
+echo "[3/10] Starting stunnel..."\n\
 /usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
 # GOST (TLS Tunnel + SOCKS5 + HTTP)\n\
-echo "[4/9] Starting GOST..."\n\
+echo "[4/10] Starting GOST..."\n\
 /usr/local/bin/gost \\\n\
   -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" \\\n\
   -L "socks5://:1081" \\\n\
@@ -223,33 +231,41 @@ sleep 1\n\
 \n\
 # Cloudflared\n\
 if [ -n "$TUNNEL_TOKEN" ]; then\n\
-  echo "[5/9] Starting Cloudflared..."\n\
+  echo "[5/10] Starting Cloudflared..."\n\
   /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token ${TUNNEL_TOKEN} &\n\
   sleep 2\n\
 fi\n\
 \n\
 # Playit\n\
 if [ -n "$SECRET_KEY" ]; then\n\
-  echo "[6/9] Starting Playit..."\n\
+  echo "[6/10] Starting Playit..."\n\
   /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
   sleep 1\n\
 fi\n\
 \n\
+# Ngrok\n\
+if [ -n "$NGROK_AUTHTOKEN" ]; then\n\
+  echo "[6.5/10] Starting Ngrok..."\n\
+  /usr/local/bin/ngrok config add-authtoken ${NGROK_AUTHTOKEN}\n\
+  /usr/local/bin/ngrok http ${NGROK_PORT:-8080} --log=stdout &\n\
+  sleep 2\n\
+fi\n\
+\n\
 # Hysteria2\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
-  echo "[7/9] Starting Hysteria2..."\n\
+  echo "[7/10] Starting Hysteria2..."\n\
   /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
   sleep 1\n\
 fi\n\
 \n\
 # dnstt\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMAIN" ]; then\n\
-  echo "[8/9] Starting dnstt..."\n\
+  echo "[8/10] Starting dnstt..."\n\
   /usr/local/bin/dnstt-server -udp :53 -privkey-file /etc/dnstt/server.key -domain ${DNSTT_DOMAIN} 127.0.0.1:8000 &\n\
   sleep 1\n\
 fi\n\
 \n\
-echo "[9/9] Starting OpenResty..."\n\
+echo "[10/10] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
 echo "=========================================="\n\
@@ -264,6 +280,8 @@ EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 10003 3128 1081 8081 443
 
 ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
+ENV NGROK_AUTHTOKEN=""
+ENV NGROK_PORT="8080"
 ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
 ENV FASTLY_ENABLED="false"
 ENV VPS_MODE="false"
