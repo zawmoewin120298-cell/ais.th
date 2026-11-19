@@ -80,6 +80,11 @@ RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
     -subj "/CN=${DOMAIN:-localhost}" -days 36500
 
+RUN curl -L "https://caddyserver.com/api/download?os=linux&arch=amd64" -o /usr/local/bin/caddy \
+    && chmod +x /usr/local/bin/caddy \
+    && mkdir -p /etc/caddy
+    
+
 # =============================================
 # 9. Fastly CDN Configuration
 # =============================================
