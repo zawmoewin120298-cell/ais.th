@@ -12,8 +12,8 @@
         header Connection *Upgrade*
         header Upgrade websocket
     }
-    reverse_proxy @vless_ws 127.0.0.1:8082
+    reverse_proxy @vless_ws 127.0.0.1:10001
 
     # OpenResty/Nginx ကို 8880 ပြောင်းထားရင် ဒီမှာလည်း 8880 လို့ ပြောင်းပေးပါ
-    reverse_proxy /* 127.0.0.1:8880
+    reverse_proxy /* 127.0.0.1:8888
 }
