@@ -1,13 +1,21 @@
 {
-    # Email မလိုဘဲ Anonymous အနေနဲ့ SSL/TLS ထုတ်သုံးရန်
     admin off
 }
 
 :{$PORT:8080} {
-    # WebSocket Path များကို Backend သို့ လွှဲပြောင်းရန် (ဥပမာ - Xray port 10000 သို့)
-    reverse_proxy /vless 127.0.0.1:8082
+    # Health check endpoint (Railway / Docker healthcheck အတွက် အဆင်ပြေစေရန်)
+    handle /health {
+        respond "OK" 200
+    }
 
-    # ကျန်ရှိသော Traffic များကို Nginx/OpenResty သို့မဟုတ် အခြားဆီသို့ လွှဲရန်
+    # Xray VLESS WebSocket path -> Xray inbound port (ဥပမာ 8082)
+    @vless_ws {
+        path /vless
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @vless_ws 127.0.0.1:8082
+
+    # ကျန်သော Traffic များ -> OpenResty/Nginx port (ဥပမာ 8081 - 8080 မဟုတ်စေရန်)
     reverse_proxy /* 127.0.0.1:8081
 }
-
