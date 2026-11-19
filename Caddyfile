@@ -3,12 +3,10 @@
 }
 
 :{$PORT:8080} {
-    # Health check endpoint (Railway / Docker healthcheck အတွက် အဆင်ပြေစေရန်)
     handle /health {
         respond "OK" 200
     }
 
-    # Xray VLESS WebSocket path -> Xray inbound port (ဥပမာ 8082)
     @vless_ws {
         path /vless
         header Connection *Upgrade*
@@ -16,6 +14,6 @@
     }
     reverse_proxy @vless_ws 127.0.0.1:8082
 
-    # ကျန်သော Traffic များ -> OpenResty/Nginx port (ဥပမာ 8081 - 8080 မဟုတ်စေရန်)
-    reverse_proxy /* 127.0.0.1:8081
+    # OpenResty/Nginx ကို 8880 ပြောင်းထားရင် ဒီမှာလည်း 8880 လို့ ပြောင်းပေးပါ
+    reverse_proxy /* 127.0.0.1:8880
 }
