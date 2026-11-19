@@ -1,3 +1,11 @@
+
+#PORT (Railway က အလိုအလျောက် ပေးတဲ့ Port ကို OpenResty/Nginx က ဖမ်းယူသုံးစွဲပါလိမ့်မယ်)
+TUNNEL_TOKEN (Cloudflare Tunnel သုံးမယ်ဆိုရင် ထည့်ရန်)
+NGROK_AUTHTOKEN (Ngrok လွှတ်ချင်မှသာ ထည့်ရန် - ယခုလက်လွတ်လိုလျှင် မထည့်ရန်)
+VPS_MODE (true သို့မဟုတ် false)
+၃. Health Check (ကျန်းမာရေးစစ်ဆေးမှု) စစ်ဆေးရန်
+
+
 #vps run code
 
 # Service ကို Enable လုပ်ပါ
