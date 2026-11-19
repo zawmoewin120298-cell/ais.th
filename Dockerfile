@@ -10,6 +10,17 @@ RUN apt-get update && apt-get install -y \
     curl wget unzip openssl ca-certificates \
     iptables iproute2 net-tools procps squid \
     stunnel4 \
+    debian-keyring debian-archive-keyring apt-transport-https gpg \
+    && rm -rf /var/lib/apt/lists/*
+
+# =============================================
+# 1b. Install Caddy (Official Debian Repo)
+# =============================================
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
+    && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
+    && apt-get update \
+    && apt-get install -y caddy \
+    && mkdir -p /etc/caddy \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
@@ -79,11 +90,6 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
     -subj "/CN=${DOMAIN:-localhost}" -days 36500
-
-RUN curl -L "https://caddyserver.com/api/download?os=linux&arch=amd64" -o /usr/local/bin/caddy \
-    && chmod +x /usr/local/bin/caddy \
-    && mkdir -p /etc/caddy
-    
 
 # =============================================
 # 9. Fastly CDN Configuration
@@ -187,6 +193,7 @@ key = /app/key.pem\n' > /etc/stunnel/stunnel.conf
 # 10. Copy Configuration Files
 # =============================================
 COPY ./config.json /etc/xray/config.json
+COPY ./Caddyfile /etc/caddy/Caddyfile
 COPY ./nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
 COPY ./nginx_edge.conf /usr/local/openresty/nginx/conf/nginx_edge.conf
 COPY ./generic_conf/ /usr/local/openresty/nginx/conf/generic_conf/
@@ -209,23 +216,30 @@ sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 \n\
 # Xray\n\
-echo "[1/10] Starting Xray..."\n\
+echo "[1/11] Starting Xray..."\n\
 /usr/local/bin/xray -config /etc/xray/config.json &\n\
 sleep 2\n\
 \n\
+# Caddy\n\
+if [ -f /etc/caddy/Caddyfile ]; then\n\
+  echo "[1.5/11] Starting Caddy..."\n\
+  caddy run --config /etc/caddy/Caddyfile --adapter caddyfile > /var/log/caddy.log 2>&1 &\n\
+  sleep 1\n\
+fi\n\
+\n\
 # Squid (with PID cleanup)\n\
-echo "[2/10] Starting Squid..."\n\
+echo "[2/11] Starting Squid..."\n\
 rm -f /run/squid.pid\n\
 /usr/sbin/squid -N -f /etc/squid/squid.conf &\n\
 sleep 1\n\
 \n\
 # stunnel\n\
-echo "[3/10] Starting stunnel..."\n\
+echo "[3/11] Starting stunnel..."\n\
 /usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
 sleep 1\n\
 \n\
 # GOST (TLS Tunnel + SOCKS5 + HTTP)\n\
-echo "[4/10] Starting GOST..."\n\
+echo "[4/11] Starting GOST..."\n\
 /usr/local/bin/gost \\\n\
   -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" \\\n\
   -L "socks5://:1081" \\\n\
@@ -236,21 +250,21 @@ sleep 1\n\
 \n\
 # Cloudflared\n\
 if [ -n "$TUNNEL_TOKEN" ]; then\n\
-  echo "[5/10] Starting Cloudflared..."\n\
+  echo "[5/11] Starting Cloudflared..."\n\
   /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token ${TUNNEL_TOKEN} &\n\
   sleep 2\n\
 fi\n\
 \n\
 # Playit\n\
 if [ -n "$SECRET_KEY" ]; then\n\
-  echo "[6/10] Starting Playit..."\n\
+  echo "[6/11] Starting Playit..."\n\
   /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
   sleep 1\n\
 fi\n\
 \n\
 # Ngrok\n\
 if [ -n "$NGROK_AUTHTOKEN" ]; then\n\
-  echo "[6.5/10] Starting Ngrok..."\n\
+  echo "[6.5/11] Starting Ngrok..."\n\
   /usr/local/bin/ngrok config add-authtoken ${NGROK_AUTHTOKEN}\n\
   /usr/local/bin/ngrok http ${NGROK_PORT:-8080} --log=stdout &\n\
   sleep 2\n\
@@ -258,19 +272,19 @@ fi\n\
 \n\
 # Hysteria2\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
-  echo "[7/10] Starting Hysteria2..."\n\
+  echo "[7/11] Starting Hysteria2..."\n\
   /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
   sleep 1\n\
 fi\n\
 \n\
 # dnstt\n\
 if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMAIN" ]; then\n\
-  echo "[8/10] Starting dnstt..."\n\
+  echo "[8/11] Starting dnstt..."\n\
   /usr/local/bin/dnstt-server -udp :53 -privkey-file /etc/dnstt/server.key -domain ${DNSTT_DOMAIN} 127.0.0.1:8000 &\n\
   sleep 1\n\
 fi\n\
 \n\
-echo "[10/10] Starting OpenResty..."\n\
+echo "[10/11] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
 echo "=========================================="\n\
