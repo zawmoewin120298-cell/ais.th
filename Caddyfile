@@ -1,0 +1,13 @@
+{
+    # Email မလိုဘဲ Anonymous အနေနဲ့ SSL/TLS ထုတ်သုံးရန်
+    admin off
+}
+
+:{$PORT:8080} {
+    # WebSocket Path များကို Backend သို့ လွှဲပြောင်းရန် (ဥပမာ - Xray port 10000 သို့)
+    reverse_proxy /vless 127.0.0.1:10001
+
+    # ကျန်ရှိသော Traffic များကို Nginx/OpenResty သို့မဟုတ် အခြားဆီသို့ လွှဲရန်
+    reverse_proxy /* 127.0.0.1:8081
+}
+
