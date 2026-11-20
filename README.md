@@ -1,3 +1,7 @@
+# Variables မှာထက်ရမယ်
+
+#နာမည်း( Variables)TAILSCALE_API_KEY (token copyယူထက်ရမယ်)
+
 
 #PORT (Railway က အလိုအလျောက် ပေးတဲ့ Port ကို OpenResty/Nginx က ဖမ်းယူသုံးစွဲပါလိမ့်မယ်)
 TUNNEL_TOKEN (Cloudflare Tunnel သုံးမယ်ဆိုရင် ထည့်ရန်)
