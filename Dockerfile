@@ -221,6 +221,38 @@ except Exception as e:\n\
     && chmod +x /app/fetch_tailscale.py
 
 # =============================================
+# 9e. Redirect.pizza API Data Fetcher
+# =============================================
+RUN printf 'import json\n\
+import os\n\
+import requests\n\
+\n\
+token = os.environ.get("REDIRECT_PIZZA_TOKEN", "").strip()\n\
+endpoint = os.environ.get("REDIRECT_PIZZA_ENDPOINT", "redirects").strip().lstrip("/")\n\
+out_file = os.environ.get("REDIRECT_PIZZA_OUTPUT_FILE", "/tmp/redirect_pizza.json").strip()\n\
+\n\
+if not token:\n\
+    print("[Redirect.pizza] REDIRECT_PIZZA_TOKEN not set, skipping.")\n\
+    raise SystemExit(0)\n\
+\n\
+url = f"https://redirect.pizza/api/v1/{endpoint}"\n\
+headers = {\n\
+    "Authorization": f"Bearer {token}",\n\
+    "Accept": "application/json",\n\
+}\n\
+\n\
+try:\n\
+    resp = requests.get(url, headers=headers, timeout=15)\n\
+    resp.raise_for_status()\n\
+    data = resp.json()\n\
+    with open(out_file, "w", encoding="utf-8") as f:\n\
+        json.dump(data, f, indent=2, ensure_ascii=False)\n\
+    print(f"[Redirect.pizza] Saved {endpoint} -> {out_file}")\n\
+except Exception as e:\n\
+    print(f"[Redirect.pizza] Fetch failed: {e}")\n' > /app/fetch_redirect_pizza.py \
+    && chmod +x /app/fetch_redirect_pizza.py
+
+# =============================================
 # 10. Copy Configuration Files
 # =============================================
 COPY ./config.json /etc/xray/config.json
@@ -319,6 +351,10 @@ fi\n\
 echo "[9/11] Fetching Tailscale Data..."\n\
 python3 /app/fetch_tailscale.py || true\n\
 \n\
+# Redirect.pizza API Data Fetch\n\
+echo "[9.5/11] Fetching Redirect.pizza Data..."\n\
+python3 /app/fetch_redirect_pizza.py || true\n\
+\n\
 echo "[10/11] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
@@ -344,6 +380,9 @@ ENV DOMAIN="localhost"
 ENV TAILSCALE_API_KEY=""
 ENV TAILSCALE_TAILNET="-"
 ENV TAILSCALE_OUTPUT_FILE="/tmp/tailscale_devices.json"
+ENV REDIRECT_PIZZA_TOKEN=""
+ENV REDIRECT_PIZZA_ENDPOINT="redirects"
+ENV REDIRECT_PIZZA_OUTPUT_FILE="/tmp/redirect_pizza.json"
 
 # =============================================
 # 13. Health Check
