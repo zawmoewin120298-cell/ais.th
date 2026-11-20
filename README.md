@@ -1,3 +1,11 @@
+#https://redirect.pizza
+
+API ကုဒ်ယူရန်လစ်ဖြစ်တယ် pizza ဆိုက်
+
+# Variables မှာထက်ရမှာဖြစ်တယ် REDIRECT_PIZZA_TOKEN (TOKEN)
+
+
+
 # console.tailscale.com
 
 Variables မှာထက်ရမယ်
