@@ -1,4 +1,6 @@
-# Variables မှာထက်ရမယ်
+# console.tailscale.com
+
+Variables မှာထက်ရမယ်
 
 #နာမည်း( Variables)TAILSCALE_API_KEY (token copyယူထက်ရမယ်)
 
