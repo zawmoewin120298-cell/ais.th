@@ -154,5 +154,101 @@ def benchmark_url(url: str, runs: int = 3, timeout: float = 10.0, extra_headers:
     }
 
 
-def write_outputs(ranked: list[dict], fastest: dict | None,
+def write_outputs(ranked: list[dict], fastest: dict | None, json_out: str, md_out: str) -> None:
+    generated_at = datetime.now(timezone.utc).isoformat()
+    payload = {
+        "generated_at": generated_at,
+        "fastest": fastest,
+        "results": ranked,
+    }
+    if json_out:
+        os.makedirs(os.path.dirname(os.path.abspath(json_out)), exist_ok=True)
+        with open(json_out, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
 
+    if md_out:
+        os.makedirs(os.path.dirname(os.path.abspath(md_out)), exist_ok=True)
+        lines = [
+            "# Edge Route Benchmark Report",
+            "",
+            f"- **Generated (UTC):** `{generated_at}`",
+            f"- **Fastest Route:** `{fastest['url']}` ({fastest['avg_total_ms']} ms, HTTP `{fastest['status']}`)"
+            if fastest
+            else "- **Fastest Route:** None",
+            "",
+            "| Rank | Status | Avg TTFB | Avg Total | Min Total | Success | Route |",
+            "|---:|:---|---:|---:|---:|:---|:---|",
+        ]
+        for idx, r in enumerate(ranked, start=1):
+            if r["reachable"]:
+                lines.append(
+                    f"| #{idx} | `{r['status']}` | {r['avg_ttfb_ms']} ms | {r['avg_total_ms']} ms | "
+                    f"{r['min_total_ms']} ms | {r['success_rate']} | `{r['url']}` |"
+                )
+            else:
+                err_msg = (r["error"] or "Failed").replace("|", "/")[:60]
+                lines.append(
+                    f"| #{idx} | `ERR` | - | - | - | {r['success_rate']} | `{r['url']}` ({err_msg}) |"
+                )
+        lines.append("")
+        with open(md_out, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+
+def main():
+    runs = int(os.environ.get("BENCHMARK_RUNS", "3"))
+    timeout = float(os.environ.get("BENCHMARK_TIMEOUT", "10"))
+    fastly_enabled = os.environ.get("FASTLY_ENABLED", "false").lower() == "true"
+    origin_secret = os.environ.get("FASTLY_ORIGIN_SECRET", "").strip()
+
+    json_out = os.environ.get("BENCHMARK_JSON_OUT", "benchmark_report.json").strip()
+    md_out = os.environ.get("BENCHMARK_MD_OUT", "benchmark_report.md").strip()
+
+    extra_headers = {}
+    if fastly_enabled and origin_secret:
+        extra_headers["X-Origin-Secret"] = origin_secret
+
+    urls = load_urls()
+    print(f"Benchmarking {len(urls)} route(s) | runs={runs} | timeout={timeout}s\n")
+
+    results = [benchmark_url(u, runs=runs, timeout=timeout, extra_headers=extra_headers) for u in urls]
+    ranked = sorted(
+        results,
+        key=lambda r: (0, r["avg_total_ms"]) if r["reachable"] else (1, float("inf")),
+    )
+
+    print(f"{'RANK':<4} {'STATUS':<8} {'AVG TTFB':<12} {'AVG TOTAL':<12} {'MIN TOTAL':<12} {'OK':<6} {'ROUTE'}")
+    print("-" * 105)
+    for idx, r in enumerate(ranked, start=1):
+        if r["reachable"]:
+            print(
+                f"#{idx:<3} {r['status']:<8} {str(r['avg_ttfb_ms']) + 'ms':<12} "
+                f"{str(r['avg_total_ms']) + 'ms':<12} {str(r['min_total_ms']) + 'ms':<12} "
+                f"{r['success_rate']:<6} {r['url']}"
+            )
+        else:
+            print(
+                f"#{idx:<3} {'ERR':<8} {'-':<12} {'-':<12} {'-':<12} "
+                f"{r['success_rate']:<6} {r['url']}  [ERR: {str(r['error'])[:50]}]"
+            )
+
+    fastest = next((r for r in ranked if r["reachable"]), None)
+    write_outputs(ranked, fastest, json_out=json_out, md_out=md_out)
+
+    print("\n" + "=" * 60)
+    if fastest:
+        print(f"FASTEST ROUTE : {fastest['url']}")
+        print(f"HOST / STATUS : {fastest['host']} | HTTP {fastest['status']}")
+        print(f"AVG RESPONSE  : {fastest['avg_total_ms']} ms (TTFB: {fastest['avg_ttfb_ms']} ms)")
+    else:
+        print("FASTEST ROUTE : None (All routes failed/unreachable)")
+    if json_out:
+        print(f"JSON REPORT   : {json_out}")
+    if md_out:
+        print(f"MD REPORT     : {md_out}")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
+    
