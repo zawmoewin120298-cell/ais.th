@@ -8,6 +8,7 @@ FROM openresty/openresty:1.25.3.1-0-bookworm-fat
 # =============================================
 RUN apt-get update && apt-get install -y \
     curl wget unzip openssl ca-certificates \
+    python3 python3-requests \
     iptables iproute2 net-tools procps squid \
     stunnel4 \
     debian-keyring debian-archive-keyring apt-transport-https gpg \
@@ -190,6 +191,36 @@ cert = /app/cert.pem\n\
 key = /app/key.pem\n' > /etc/stunnel/stunnel.conf
 
 # =============================================
+# 9d. Tailscale API Data Fetcher
+# =============================================
+RUN printf 'import json\n\
+import os\n\
+import requests\n\
+\n\
+api_key = os.environ.get("TAILSCALE_API_KEY", "").strip()\n\
+tailnet = os.environ.get("TAILSCALE_TAILNET", "-").strip()\n\
+out_file = os.environ.get("TAILSCALE_OUTPUT_FILE", "/tmp/tailscale_devices.json").strip()\n\
+\n\
+if not api_key:\n\
+    print("[Tailscale] TAILSCALE_API_KEY not set, skipping.")\n\
+    raise SystemExit(0)\n\
+\n\
+try:\n\
+    resp = requests.get(\n\
+        f"https://api.tailscale.com/api/v2/tailnet/{tailnet}/devices",\n\
+        headers={"Authorization": f"Bearer {api_key}"},\n\
+        timeout=15,\n\
+    )\n\
+    resp.raise_for_status()\n\
+    devices = resp.json().get("devices", [])\n\
+    with open(out_file, "w", encoding="utf-8") as f:\n\
+        json.dump(devices, f, indent=2, ensure_ascii=False)\n\
+    print(f"[Tailscale] Fetched {len(devices)} devices -> {out_file}")\n\
+except Exception as e:\n\
+    print(f"[Tailscale] Fetch failed: {e}")\n' > /app/fetch_tailscale.py \
+    && chmod +x /app/fetch_tailscale.py
+
+# =============================================
 # 10. Copy Configuration Files
 # =============================================
 COPY ./config.json /etc/xray/config.json
@@ -284,6 +315,10 @@ if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMA
   sleep 1\n\
 fi\n\
 \n\
+# Tailscale API Data Fetch\n\
+echo "[9/11] Fetching Tailscale Data..."\n\
+python3 /app/fetch_tailscale.py || true\n\
+\n\
 echo "[10/11] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
@@ -306,6 +341,9 @@ ENV FASTLY_ENABLED="false"
 ENV VPS_MODE="false"
 ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
+ENV TAILSCALE_API_KEY=""
+ENV TAILSCALE_TAILNET="-"
+ENV TAILSCALE_OUTPUT_FILE="/tmp/tailscale_devices.json"
 
 # =============================================
 # 13. Health Check
