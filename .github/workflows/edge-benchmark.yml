@@ -1,0 +1,37 @@
+name: Edge Route Benchmark
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Run edge benchmark
+        env:
+          BENCHMARK_RUNS: "3"
+          BENCHMARK_TIMEOUT: "10"
+          BENCHMARK_JSON_OUT: "benchmark_report.json"
+          BENCHMARK_MD_OUT: "benchmark_report.md"
+          EDGE_URLS: ${{ vars.EDGE_URLS }}
+          FASTLY_ENABLED: ${{ vars.FASTLY_ENABLED || 'false' }}
+          FASTLY_ORIGIN_SECRET: ${{ secrets.FASTLY_ORIGIN_SECRET }}
+        run: python3 benchmark_edges.py
+
+      - name: Publish job summary
+        if: always()
+        run: cat benchmark_report.md >> "$GITHUB_STEP_SUMMARY"
+
