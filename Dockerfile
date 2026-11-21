@@ -363,11 +363,22 @@ if [ -n "$SECRET_KEY" ]; then\n\
   sleep 1\n\
 fi\n\
 \n\
-# Ngrok\n\
+# Ngrok (with dedicated log & auto-restart)\n\
 if [ -n "$NGROK_AUTHTOKEN" ]; then\n\
   echo "[6.5/11] Starting Ngrok..."\n\
-  /usr/local/bin/ngrok config add-authtoken ${NGROK_AUTHTOKEN}\n\
-  /usr/local/bin/ngrok http ${NGROK_PORT:-8080} --log=stdout &\n\
+  /usr/local/bin/ngrok config add-authtoken "${NGROK_AUTHTOKEN}" >/dev/null 2>&1 || true\n\
+  (\n\
+    while true; do\n\
+      TARGET="${NGROK_ADDR:-127.0.0.1:${NGROK_PORT:-8080}}"\n\
+      if [ "${NGROK_PROTO:-http}" = "tcp" ]; then\n\
+        /usr/local/bin/ngrok tcp "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1\n\
+      else\n\
+        /usr/local/bin/ngrok http "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1\n\
+      fi\n\
+      echo "[Ngrok] Exited, restarting in 3s..." >> /var/log/ngrok.log\n\
+      sleep 3\n\
+    done\n\
+  ) &\n\
   sleep 2\n\
 fi\n\
 \n\
@@ -414,6 +425,8 @@ ENV TUNNEL_TOKEN=""
 ENV SECRET_KEY=""
 ENV NGROK_AUTHTOKEN=""
 ENV NGROK_PORT="8080"
+ENV NGROK_PROTO="http"
+ENV NGROK_ADDR=""
 ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
 ENV FASTLY_ENABLED="false"
 ENV VPS_MODE="false"
