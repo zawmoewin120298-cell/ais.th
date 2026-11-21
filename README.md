@@ -1,3 +1,19 @@
+
+# https://api.quanticdata.io/v1/public/balance
+
+website 
+
+Variables Tab သွားပြီး Variable အသစ် ထည့်ပါ
+Variables
+Variables Tab ကို နှိပ်ပြီး + New Variable (သို့မဟုတ် Raw Editor) ကို ရွေးပါ။ Variable Name မှာ QD_KEY (သို့မဟုတ် QUANTICDATA_API_KEY) ထည့်ပြီး Value နေရာမှာ ကိုယ့် API Token ကို ထည့်ပါ။
+Verification: Variables list ထဲမှာ QD_KEY နဲ့ Value တန်ဖိုး ပေါ်နေပါမယ်။
+3
+Deploy / Redeploy လုပ်ပြီး Container ထဲ ရောက်/မရောက် စစ်ပါ
+Deploy & Verify
+Variable ပြင်ပြီးရင် Deploy (သို့မဟုတ် Redeploy) လုပ်ပါ။ Container တက်လာတဲ့အခါ Shell/Log ထဲကနေ echo "$QD_KEY" (သို့မဟုတ် env | grep QD_KEY) နဲ့ Variable ဝင်မဝင် စစ်ဆေးကြည့်ပါ။
+Verification: QD_KEY=... လို့ Output ထွက်လာရင် Container ထဲမှာ Environment Variable အဖြစ် အသုံးပြုလို့ ရနေပါပြီ။
+
+
 #https://redirect.pizza
 
 API ကုဒ်ယူရန်လစ်ဖြစ်တယ် pizza ဆိုက်
