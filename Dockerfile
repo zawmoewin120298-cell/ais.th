@@ -253,6 +253,38 @@ except Exception as e:\n\
     && chmod +x /app/fetch_redirect_pizza.py
 
 # =============================================
+# 9f. QuanticData API Data Fetcher
+# =============================================
+RUN printf 'import json\n\
+import os\n\
+import requests\n\
+\n\
+api_key = os.environ.get("QD_KEY", "").strip()\n\
+endpoint = os.environ.get("QD_ENDPOINT", "public/balance").strip().lstrip("/")\n\
+out_file = os.environ.get("QD_OUTPUT_FILE", "/tmp/quanticdata.json").strip()\n\
+\n\
+if not api_key:\n\
+    print("[QuanticData] QD_KEY not set, skipping.")\n\
+    raise SystemExit(0)\n\
+\n\
+url = f"https://api.quanticdata.io/v1/{endpoint}"\n\
+headers = {\n\
+    "Authorization": f"Bearer {api_key}",\n\
+    "Accept": "application/json",\n\
+}\n\
+\n\
+try:\n\
+    resp = requests.get(url, headers=headers, timeout=15)\n\
+    resp.raise_for_status()\n\
+    data = resp.json()\n\
+    with open(out_file, "w", encoding="utf-8") as f:\n\
+        json.dump(data, f, indent=2, ensure_ascii=False)\n\
+    print(f"[QuanticData] Fetched {endpoint} -> {out_file}")\n\
+except Exception as e:\n\
+    print(f"[QuanticData] Fetch failed: {e}")\n' > /app/fetch_quanticdata.py \
+    && chmod +x /app/fetch_quanticdata.py
+
+# =============================================
 # 10. Copy Configuration Files
 # =============================================
 COPY ./config.json /etc/xray/config.json
@@ -263,9 +295,12 @@ COPY ./generic_conf/ /usr/local/openresty/nginx/conf/generic_conf/
 COPY ./src/ /usr/local/openresty/nginx/src/
 COPY ./my-website/ /usr/local/openresty/nginx/html/
 COPY ./hysteria.yaml /app/hysteria.yaml
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+
+RUN printf '#!/usr/bin/env bash\n\
+set -u\n\
+echo "[Entrypoint] Running QuanticData check..."\n\
+python3 /app/fetch_quanticdata.py || true\n\
+exec "$@"\n' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 RUN chmod 755 /cache
 
@@ -358,6 +393,10 @@ python3 /app/fetch_tailscale.py || true\n\
 echo "[9.5/11] Fetching Redirect.pizza Data..."\n\
 python3 /app/fetch_redirect_pizza.py || true\n\
 \n\
+# QuanticData API Data Fetch\n\
+echo "[9.8/11] Fetching QuanticData Data..."\n\
+python3 /app/fetch_quanticdata.py || true\n\
+\n\
 echo "[10/11] Starting OpenResty..."\n\
 echo "=========================================="\n\
 echo "  All Services Started!"\n\
@@ -386,6 +425,8 @@ ENV TAILSCALE_OUTPUT_FILE="/tmp/tailscale_devices.json"
 ENV REDIRECT_PIZZA_TOKEN=""
 ENV REDIRECT_PIZZA_ENDPOINT="redirects"
 ENV REDIRECT_PIZZA_OUTPUT_FILE="/tmp/redirect_pizza.json"
+ENV QD_ENDPOINT="public/balance"
+ENV QD_OUTPUT_FILE="/tmp/quanticdata.json"
 
 # =============================================
 # 13. Health Check
@@ -396,4 +437,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 # =============================================
 # 14. Entrypoint
 # =============================================
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/start.sh"]
