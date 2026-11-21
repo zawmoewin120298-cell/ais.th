@@ -263,6 +263,9 @@ COPY ./generic_conf/ /usr/local/openresty/nginx/conf/generic_conf/
 COPY ./src/ /usr/local/openresty/nginx/src/
 COPY ./my-website/ /usr/local/openresty/nginx/html/
 COPY ./hysteria.yaml /app/hysteria.yaml
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 
 RUN chmod 755 /cache
 
