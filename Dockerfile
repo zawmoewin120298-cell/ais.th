@@ -1,4 +1,16 @@
 # =============================================
+# 0. Build Stage: aleskxyz/SNI-Spoofing-Go
+# =============================================
+FROM golang:1.25 AS sni-build
+WORKDIR /src
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 https://github.com/aleskxyz/SNI-Spoofing-Go.git .
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+RUN go mod download && go build -ldflags="-s -w" -o /out/sni-spoofing .
+
+# =============================================
 # Base Image (Debian-based OpenResty)
 # =============================================
 FROM openresty/openresty:1.25.3.1-0-bookworm-fat
@@ -76,6 +88,10 @@ RUN curl -L https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linu
     && gunzip -c /tmp/gost.gz > /usr/local/bin/gost \
     && chmod +x /usr/local/bin/gost \
     && rm /tmp/gost.gz
+
+# Copy SNI-Spoofing-Go binary
+COPY --from=sni-build /out/sni-spoofing /usr/local/bin/sni-spoofing
+RUN chmod +x /usr/local/bin/sni-spoofing
 
 # =============================================
 # 7. Create Directories
@@ -171,12 +187,16 @@ RUN chown -R proxy:proxy /var/log/squid /var/spool/squid /etc/squid && \
     chmod 755 /var/log/squid /var/spool/squid
 
 # =============================================
-# 9c. stunnel Configuration
+# 9c. stunnel Configuration (TLS 1.2+ Hardened)
 # =============================================
 RUN printf 'foreground = yes\n\
 pid = /var/run/stunnel/stunnel.pid\n\
 debug = 4\n\
 output = /var/log/stunnel/stunnel.log\n\
+options = NO_SSLv2\n\
+options = NO_SSLv3\n\
+options = NO_TLSv1\n\
+options = NO_TLSv1_1\n\
 \n\
 [ws-tls]\n\
 accept = 8444\n\
@@ -308,13 +328,20 @@ RUN chmod 755 /cache
 # 11. Startup Script
 # =============================================
 RUN printf '#!/bin/bash\n\
-set -e\n\
+set -u\n\
 echo "=========================================="\n\
 echo "  Starting Services..."\n\
 echo "=========================================="\n\
 \n\
 sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
 sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
+\n\
+# Optional SNI-Spoofing-Go\n\
+if [ "${SNI_SPOOF_ENABLED:-false}" = "true" ]; then\n\
+  echo "[SNI] Starting sni-spoofing..."\n\
+  /usr/local/bin/sni-spoofing ${SNI_SPOOF_ARGS:-} > /var/log/sni-spoofing.log 2>&1 &\n\
+  sleep 1\n\
+fi\n\
 \n\
 # Xray\n\
 echo "[1/11] Starting Xray..."\n\
@@ -350,21 +377,21 @@ echo "[4/11] Starting GOST..."\n\
 sleep 1\n\
 \n\
 # Cloudflared\n\
-if [ -n "$TUNNEL_TOKEN" ]; then\n\
+if [ -n "${TUNNEL_TOKEN:-}" ]; then\n\
   echo "[5/11] Starting Cloudflared..."\n\
-  /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token ${TUNNEL_TOKEN} &\n\
+  /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token "${TUNNEL_TOKEN}" &\n\
   sleep 2\n\
 fi\n\
 \n\
 # Playit\n\
-if [ -n "$SECRET_KEY" ]; then\n\
+if [ -n "${SECRET_KEY:-}" ]; then\n\
   echo "[6/11] Starting Playit..."\n\
-  /usr/local/bin/playit --secret ${SECRET_KEY} &\n\
+  /usr/local/bin/playit --secret "${SECRET_KEY}" &\n\
   sleep 1\n\
 fi\n\
 \n\
 # Ngrok (with dedicated log & auto-restart)\n\
-if [ -n "$NGROK_AUTHTOKEN" ]; then\n\
+if [ -n "${NGROK_AUTHTOKEN:-}" ]; then\n\
   echo "[6.5/11] Starting Ngrok..."\n\
   /usr/local/bin/ngrok config add-authtoken "${NGROK_AUTHTOKEN}" >/dev/null 2>&1 || true\n\
   (\n\
@@ -383,16 +410,16 @@ if [ -n "$NGROK_AUTHTOKEN" ]; then\n\
 fi\n\
 \n\
 # Hysteria2\n\
-if [ "$VPS_MODE" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
+if [ "${VPS_MODE:-false}" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
   echo "[7/11] Starting Hysteria2..."\n\
   /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
   sleep 1\n\
 fi\n\
 \n\
 # dnstt\n\
-if [ "$VPS_MODE" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "$DNSTT_DOMAIN" ]; then\n\
+if [ "${VPS_MODE:-false}" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "${DNSTT_DOMAIN:-}" ]; then\n\
   echo "[8/11] Starting dnstt..."\n\
-  /usr/local/bin/dnstt-server -udp :53 -privkey-file /etc/dnstt/server.key -domain ${DNSTT_DOMAIN} 127.0.0.1:8000 &\n\
+  /usr/local/bin/dnstt-server -udp :53 -privkey-file /etc/dnstt/server.key -domain "${DNSTT_DOMAIN}" 127.0.0.1:8000 &\n\
   sleep 1\n\
 fi\n\
 \n\
@@ -432,6 +459,8 @@ ENV FASTLY_ENABLED="false"
 ENV VPS_MODE="false"
 ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
+ENV SNI_SPOOF_ENABLED="false"
+ENV SNI_SPOOF_ARGS=""
 ENV TAILSCALE_API_KEY=""
 ENV TAILSCALE_TAILNET="-"
 ENV TAILSCALE_OUTPUT_FILE="/tmp/tailscale_devices.json"
