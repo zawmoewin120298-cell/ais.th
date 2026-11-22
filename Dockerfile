@@ -1,14 +1,20 @@
+# syntax=docker/dockerfile:1
+
 # =============================================
 # 0. Build Stage: aleskxyz/SNI-Spoofing-Go
 # =============================================
 FROM golang:1.25 AS sni-build
 WORKDIR /src
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
 RUN git clone --depth 1 https://github.com/aleskxyz/SNI-Spoofing-Go.git .
+
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-RUN go mod download && go build -ldflags="-s -w" -o /out/sni-spoofing .
+RUN go mod download \
+    && go build -ldflags="-s -w" -o /out/sni-spoofing .
 
 # =============================================
 # Base Image (Debian-based OpenResty)
@@ -94,12 +100,12 @@ COPY --from=sni-build /out/sni-spoofing /usr/local/bin/sni-spoofing
 RUN chmod +x /usr/local/bin/sni-spoofing
 
 # =============================================
-# 7. Create Directories
+# 7. Create Directories & Log Dirs
 # =============================================
 RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
     /etc/nginx/cdn /root/.config/playit_gg /var/log/supervisor \
     /var/log/squid /var/spool/squid \
-    /etc/stunnel /var/run/stunnel /var/log/stunnel
+    /etc/stunnel /var/run/stunnel /var/log/stunnel /var/log/app
 
 # =============================================
 # 8. Generate Self-Signed Cert
@@ -305,7 +311,7 @@ except Exception as e:\n\
     && chmod +x /app/fetch_quanticdata.py
 
 # =============================================
-# 10. Copy Configuration Files
+# 10. Copy Configuration Files (with fallback nginx.conf)
 # =============================================
 COPY ./config.json /etc/xray/config.json
 COPY ./Caddyfile /etc/caddy/Caddyfile
@@ -339,19 +345,31 @@ sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
 # Optional SNI-Spoofing-Go\n\
 if [ "${SNI_SPOOF_ENABLED:-false}" = "true" ]; then\n\
   echo "[SNI] Starting sni-spoofing..."\n\
-  /usr/local/bin/sni-spoofing ${SNI_SPOOF_ARGS:-} > /var/log/sni-spoofing.log 2>&1 &\n\
+  (\n\
+    while true; do\n\
+      /usr/local/bin/sni-spoofing ${SNI_SPOOF_ARGS:-} >> /var/log/app/sni-spoofing.log 2>&1 || true\n\
+      echo "[SNI] Exited, retrying in 3s..." >> /var/log/app/sni-spoofing.log\n\
+      sleep 3\n\
+    done\n\
+  ) &\n\
   sleep 1\n\
 fi\n\
 \n\
 # Xray\n\
 echo "[1/11] Starting Xray..."\n\
-/usr/local/bin/xray -config /etc/xray/config.json &\n\
+(\n\
+  while true; do\n\
+    /usr/local/bin/xray -config /etc/xray/config.json >> /var/log/app/xray.log 2>&1 || true\n\
+    echo "[XRAY] Exited, retrying in 2s..." >> /var/log/app/xray.log\n\
+    sleep 2\n\
+  done\n\
+) &\n\
 sleep 2\n\
 \n\
 # Caddy\n\
 if [ -f /etc/caddy/Caddyfile ]; then\n\
   echo "[1.5/11] Starting Caddy..."\n\
-  caddy run --config /etc/caddy/Caddyfile --adapter caddyfile > /var/log/caddy.log 2>&1 &\n\
+  caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >> /var/log/caddy.log 2>&1 &\n\
   sleep 1\n\
 fi\n\
 \n\
@@ -379,7 +397,13 @@ sleep 1\n\
 # Cloudflared\n\
 if [ -n "${TUNNEL_TOKEN:-}" ]; then\n\
   echo "[5/11] Starting Cloudflared..."\n\
-  /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token "${TUNNEL_TOKEN}" &\n\
+  (\n\
+    while true; do\n\
+      /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token "${TUNNEL_TOKEN}" >> /var/log/cloudflared.log 2>&1 || true\n\
+      echo "[Cloudflared] Exited, retrying in 3s..." >> /var/log/cloudflared.log\n\
+      sleep 3\n\
+    done\n\
+  ) &\n\
   sleep 2\n\
 fi\n\
 \n\
@@ -398,9 +422,9 @@ if [ -n "${NGROK_AUTHTOKEN:-}" ]; then\n\
     while true; do\n\
       TARGET="${NGROK_ADDR:-127.0.0.1:${NGROK_PORT:-8080}}"\n\
       if [ "${NGROK_PROTO:-http}" = "tcp" ]; then\n\
-        /usr/local/bin/ngrok tcp "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1\n\
+        /usr/local/bin/ngrok tcp "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1 || true\n\
       else\n\
-        /usr/local/bin/ngrok http "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1\n\
+        /usr/local/bin/ngrok http "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1 || true\n\
       fi\n\
       echo "[Ngrok] Exited, restarting in 3s..." >> /var/log/ngrok.log\n\
       sleep 3\n\
@@ -440,6 +464,7 @@ echo "=========================================="\n\
 echo "  All Services Started!"\n\
 echo "=========================================="\n\
 \n\
+/usr/local/openresty/bin/openresty -t\n\
 exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
     && chmod +x /start.sh
 
