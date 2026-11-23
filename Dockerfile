@@ -209,12 +209,14 @@ accept = 8444\n\
 connect = 127.0.0.1:10001\n\
 cert = /app/cert.pem\n\
 key = /app/key.pem\n\
+verify = 0\n\
 \n\
 [xhttp-tls]\n\
 accept = 8445\n\
 connect = 127.0.0.1:10002\n\
 cert = /app/cert.pem\n\
-key = /app/key.pem\n' > /etc/stunnel/stunnel.conf
+key = /app/key.pem\n\
+verify = 0\n' > /etc/stunnel/stunnel.conf
 
 # =============================================
 # 9d. Tailscale API Data Fetcher
@@ -311,7 +313,7 @@ except Exception as e:\n\
     && chmod +x /app/fetch_quanticdata.py
 
 # =============================================
-# 10. Copy Configuration Files (with fallback nginx.conf)
+# 10. Copy Configuration Files
 # =============================================
 COPY ./config.json /etc/xray/config.json
 COPY ./Caddyfile /etc/caddy/Caddyfile
@@ -396,10 +398,10 @@ sleep 1\n\
 \n\
 # Cloudflared\n\
 if [ -n "${TUNNEL_TOKEN:-}" ]; then\n\
-  echo "[5/11] Starting Cloudflared..."\n\
+  echo "[5/11] Starting Cloudflared (${CF_PROTOCOL:-http2})..."\n\
   (\n\
     while true; do\n\
-      /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol quic run --token "${TUNNEL_TOKEN}" >> /var/log/cloudflared.log 2>&1 || true\n\
+      /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol "${CF_PROTOCOL:-http2}" run --token "${TUNNEL_TOKEN}" >> /var/log/cloudflared.log 2>&1 || true\n\
       echo "[Cloudflared] Exited, retrying in 3s..." >> /var/log/cloudflared.log\n\
       sleep 3\n\
     done\n\
@@ -474,6 +476,7 @@ exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
 EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 10003 3128 1081 8081 443/udp 53/udp
 
 ENV TUNNEL_TOKEN=""
+ENV CF_PROTOCOL="http2"
 ENV SECRET_KEY=""
 ENV NGROK_AUTHTOKEN=""
 ENV NGROK_PORT="8080"
