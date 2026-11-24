@@ -179,4 +179,4 @@ echo "=========================================="
 echo "  All Services Started Successfully!"
 echo "=========================================="
 
-exec /usr/local/openresty/bin/openresty -g "daemon off;"
+exec /usr/local/openresty/bin/openresty
