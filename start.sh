@@ -14,6 +14,10 @@ set -u
 # export DNSTT_DOMAIN="..."
 # export VPS_MODE="false"
 # export FASTLY_ORIGIN_SECRET="..."
+# export NGROK_AUTHTOKEN="..."
+# export NGROK_PORT="8080"
+# export NGROK_PROTO="http"
+# export NGROK_ADDR=""
 # export PY_RELAY_ENABLED="false"
 # export PY_RELAY_ARGS="--listen-host 127.0.0.1 --remote-host 127.0.0.1 --remote-port 8444 --sni example.com --insecure"
 
@@ -39,6 +43,7 @@ echo "[Init] Stopping any leftover processes..."
 pkill -x xray 2>/dev/null || true
 pkill -x caddy 2>/dev/null || true
 pkill -x cloudflared 2>/dev/null || true
+pkill -x ngrok 2>/dev/null || true
 pkill -x hysteria 2>/dev/null || true
 pkill -x dnstt-server 2>/dev/null || true
 pkill -x openresty 2>/dev/null || true
@@ -116,6 +121,27 @@ if [ -n "${TUNNEL_TOKEN:-}" ]; then
     ) &
     sleep 2
     echo "✅ Cloudflared started"
+fi
+
+# =============================================
+# 4b. Start Ngrok (Optional if NGROK_AUTHTOKEN is set)
+# =============================================
+if [ -n "${NGROK_AUTHTOKEN:-}" ]; then
+    echo "[Ngrok] Configuring & starting Ngrok..."
+    /usr/local/bin/ngrok config add-authtoken "${NGROK_AUTHTOKEN}" >> /var/log/ngrok.log 2>&1 || true
+
+    NGROK_TARGET="${NGROK_ADDR:-127.0.0.1:${NGROK_PORT:-${APP_PORT}}}"
+    NGROK_SCHEME="${NGROK_PROTO:-http}"
+
+    (
+        while true; do
+            /usr/local/bin/ngrok "${NGROK_SCHEME}" "${NGROK_TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1 || true
+            echo "⚠️ Ngrok exited, retrying in 3s..." >> /var/log/ngrok.log
+            sleep 3
+        done
+    ) &
+    sleep 2
+    echo "✅ Ngrok started (target: ${NGROK_SCHEME}://${NGROK_TARGET})"
 fi
 
 # =============================================
