@@ -113,6 +113,12 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
     -subj "/CN=${DOMAIN:-localhost}" -days 36500
+    
+# 9 ssl/tls
+COPY ./py_sni_relay.py /app/py_sni_relay.py
+COPY ./start.sh /start.sh
+RUN chmod +x /app/py_sni_relay.py /start.sh
+    
 
 # =============================================
 # 9. Fastly CDN Configuration
