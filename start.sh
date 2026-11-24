@@ -15,7 +15,7 @@ set -u
 # export VPS_MODE="false"
 # export FASTLY_ORIGIN_SECRET="..."
 # export NGROK_AUTHTOKEN="..."
-# export NGROK_PORT="8080"
+# export NGROK_PORT="8880"
 # export NGROK_PROTO="http"
 # export NGROK_ADDR=""
 # export PY_RELAY_ENABLED="false"
