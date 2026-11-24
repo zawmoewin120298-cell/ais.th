@@ -108,17 +108,20 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
     /etc/stunnel /var/run/stunnel /var/log/stunnel /var/log/app
 
 # =============================================
-# 8. Generate Self-Signed Cert
+# 8. Generate Self-Signed Cert (with SAN)
 # =============================================
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
-    -subj "/CN=${DOMAIN:-localhost}" -days 36500
-    
-# 9 ssl/tls
+    -subj "/CN=${DOMAIN:-localhost}" \
+    -addext "subjectAltName=DNS:${DOMAIN:-localhost},DNS:localhost,IP:127.0.0.1" \
+    -days 36500
+
+# =============================================
+# 8b. Python SNI / SSL Relay & Startup Script
+# =============================================
 COPY ./py_sni_relay.py /app/py_sni_relay.py
 COPY ./start.sh /start.sh
 RUN chmod +x /app/py_sni_relay.py /start.sh
-    
 
 # =============================================
 # 9. Fastly CDN Configuration
@@ -339,142 +342,9 @@ exec "$@"\n' > /entrypoint.sh && chmod +x /entrypoint.sh
 RUN chmod 755 /cache
 
 # =============================================
-# 11. Startup Script
+# 11. Ensure Executable Permissions on /start.sh
 # =============================================
-RUN printf '#!/bin/bash\n\
-set -u\n\
-echo "=========================================="\n\
-echo "  Starting Services..."\n\
-echo "=========================================="\n\
-\n\
-sysctl -w net.core.somaxconn=1024 2>/dev/null || true\n\
-sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true\n\
-\n\
-# Optional SNI-Spoofing-Go\n\
-if [ "${SNI_SPOOF_ENABLED:-false}" = "true" ]; then\n\
-  echo "[SNI] Starting sni-spoofing..."\n\
-  (\n\
-    while true; do\n\
-      /usr/local/bin/sni-spoofing ${SNI_SPOOF_ARGS:-} >> /var/log/app/sni-spoofing.log 2>&1 || true\n\
-      echo "[SNI] Exited, retrying in 3s..." >> /var/log/app/sni-spoofing.log\n\
-      sleep 3\n\
-    done\n\
-  ) &\n\
-  sleep 1\n\
-fi\n\
-\n\
-# Xray\n\
-echo "[1/11] Starting Xray..."\n\
-(\n\
-  while true; do\n\
-    /usr/local/bin/xray -config /etc/xray/config.json >> /var/log/app/xray.log 2>&1 || true\n\
-    echo "[XRAY] Exited, retrying in 2s..." >> /var/log/app/xray.log\n\
-    sleep 2\n\
-  done\n\
-) &\n\
-sleep 2\n\
-\n\
-# Caddy\n\
-if [ -f /etc/caddy/Caddyfile ]; then\n\
-  echo "[1.5/11] Starting Caddy..."\n\
-  caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >> /var/log/caddy.log 2>&1 &\n\
-  sleep 1\n\
-fi\n\
-\n\
-# Squid (with PID cleanup)\n\
-echo "[2/11] Starting Squid..."\n\
-rm -f /run/squid.pid\n\
-/usr/sbin/squid -N -f /etc/squid/squid.conf &\n\
-sleep 1\n\
-\n\
-# stunnel\n\
-echo "[3/11] Starting stunnel..."\n\
-/usr/bin/stunnel /etc/stunnel/stunnel.conf &\n\
-sleep 1\n\
-\n\
-# GOST (TLS Tunnel + SOCKS5 + HTTP)\n\
-echo "[4/11] Starting GOST..."\n\
-/usr/local/bin/gost \\\n\
-  -L "tls://:8443?cert=/app/cert.pem&key=/app/key.pem" \\\n\
-  -L "socks5://:1081" \\\n\
-  -L "http://:8081" \\\n\
-  -F "http://127.0.0.1:1080" \\\n\
-  &\n\
-sleep 1\n\
-\n\
-# Cloudflared\n\
-if [ -n "${TUNNEL_TOKEN:-}" ]; then\n\
-  echo "[5/11] Starting Cloudflared (${CF_PROTOCOL:-http2})..."\n\
-  (\n\
-    while true; do\n\
-      /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol "${CF_PROTOCOL:-http2}" run --token "${TUNNEL_TOKEN}" >> /var/log/cloudflared.log 2>&1 || true\n\
-      echo "[Cloudflared] Exited, retrying in 3s..." >> /var/log/cloudflared.log\n\
-      sleep 3\n\
-    done\n\
-  ) &\n\
-  sleep 2\n\
-fi\n\
-\n\
-# Playit\n\
-if [ -n "${SECRET_KEY:-}" ]; then\n\
-  echo "[6/11] Starting Playit..."\n\
-  /usr/local/bin/playit --secret "${SECRET_KEY}" &\n\
-  sleep 1\n\
-fi\n\
-\n\
-# Ngrok (with dedicated log & auto-restart)\n\
-if [ -n "${NGROK_AUTHTOKEN:-}" ]; then\n\
-  echo "[6.5/11] Starting Ngrok..."\n\
-  /usr/local/bin/ngrok config add-authtoken "${NGROK_AUTHTOKEN}" >/dev/null 2>&1 || true\n\
-  (\n\
-    while true; do\n\
-      TARGET="${NGROK_ADDR:-127.0.0.1:${NGROK_PORT:-8080}}"\n\
-      if [ "${NGROK_PROTO:-http}" = "tcp" ]; then\n\
-        /usr/local/bin/ngrok tcp "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1 || true\n\
-      else\n\
-        /usr/local/bin/ngrok http "${TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1 || true\n\
-      fi\n\
-      echo "[Ngrok] Exited, restarting in 3s..." >> /var/log/ngrok.log\n\
-      sleep 3\n\
-    done\n\
-  ) &\n\
-  sleep 2\n\
-fi\n\
-\n\
-# Hysteria2\n\
-if [ "${VPS_MODE:-false}" = "true" ] && [ -f /app/hysteria.yaml ]; then\n\
-  echo "[7/11] Starting Hysteria2..."\n\
-  /usr/local/bin/hysteria server -c /app/hysteria.yaml &\n\
-  sleep 1\n\
-fi\n\
-\n\
-# dnstt\n\
-if [ "${VPS_MODE:-false}" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "${DNSTT_DOMAIN:-}" ]; then\n\
-  echo "[8/11] Starting dnstt..."\n\
-  /usr/local/bin/dnstt-server -udp :53 -privkey-file /etc/dnstt/server.key -domain "${DNSTT_DOMAIN}" 127.0.0.1:8000 &\n\
-  sleep 1\n\
-fi\n\
-\n\
-# Tailscale API Data Fetch\n\
-echo "[9/11] Fetching Tailscale Data..."\n\
-python3 /app/fetch_tailscale.py || true\n\
-\n\
-# Redirect.pizza API Data Fetch\n\
-echo "[9.5/11] Fetching Redirect.pizza Data..."\n\
-python3 /app/fetch_redirect_pizza.py || true\n\
-\n\
-# QuanticData API Data Fetch\n\
-echo "[9.8/11] Fetching QuanticData Data..."\n\
-python3 /app/fetch_quanticdata.py || true\n\
-\n\
-echo "[10/11] Starting OpenResty..."\n\
-echo "=========================================="\n\
-echo "  All Services Started!"\n\
-echo "=========================================="\n\
-\n\
-/usr/local/openresty/bin/openresty -t\n\
-exec /usr/local/openresty/bin/openresty -g "daemon off;"\n' > /start.sh \
-    && chmod +x /start.sh
+RUN chmod +x /start.sh /app/py_sni_relay.py
 
 # =============================================
 # 12. Ports & Environment
@@ -495,6 +365,8 @@ ENV DNSTT_DOMAIN=""
 ENV DOMAIN="localhost"
 ENV SNI_SPOOF_ENABLED="false"
 ENV SNI_SPOOF_ARGS=""
+ENV PY_RELAY_ENABLED="false"
+ENV PY_RELAY_ARGS="--listen-host 127.0.0.1 --listen-port 19001 --remote-host 127.0.0.1 --remote-port 8444 --sni example.com --insecure"
 ENV TAILSCALE_API_KEY=""
 ENV TAILSCALE_TAILNET="-"
 ENV TAILSCALE_OUTPUT_FILE="/tmp/tailscale_devices.json"
