@@ -155,6 +155,7 @@ fi
 # =============================================
 if [ -n "${LOCLX_ACCESS_TOKEN:-}" ]; then
     echo "[LocalXpose] Configuring & starting LocalXpose..."
+    LOCLX_TOKEN_CLEAN="$(printf '%s' "${LOCLX_ACCESS_TOKEN}" | tr -d '[:space:]')"
     LOCLX_TARGET="${LOCLX_ADDR:-127.0.0.1:${LOCLX_PORT:-${APP_PORT}}}"
     LOCLX_TYPE="${LOCLX_TYPE:-http}"
     LOCLX_REGION_FLAG=""
@@ -164,9 +165,12 @@ if [ -n "${LOCLX_ACCESS_TOKEN:-}" ]; then
 
     (
         while true; do
-            LOCLX_ACCESS_TOKEN="${LOCLX_ACCESS_TOKEN}" /usr/local/bin/loclx tunnel "${LOCLX_TYPE}" \
-                --to "${LOCLX_TARGET}" ${LOCLX_REGION_FLAG} >> /var/log/loclx.log 2>&1 || true
-            echo "⚠️ LocalXpose exited, retrying in 3s..." >> /var/log/loclx.log
+            /usr/local/bin/loclx account login "${LOCLX_TOKEN_CLEAN}" >> /var/log/loclx.log 2>&1 || true
+            /usr/local/bin/loclx tunnel "${LOCLX_TYPE}" \
+                --to "${LOCLX_TARGET}" ${LOCLX_REGION_FLAG} 2>&1 \
+                | tee -a /var/log/loclx.log \
+                | grep --line-buffered -iE "https?://|loclx\.io|error|failed|invalid|unauthorized|unauthenticated|limit" || true
+            echo "⚠️ LocalXpose exited, retrying in 3s..." | tee -a /var/log/loclx.log
             sleep 3
         done
     ) &
