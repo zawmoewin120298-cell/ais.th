@@ -1,3 +1,8 @@
+# 1 
+အသုံးပြုမယ့် Env Variable
+Railway / Docker env ထဲမှာ LOCLX_ACCESS_TOKEN ကို ထည့်ပေးရုံပါပဲ (LOCLX_ACCESS_TOKEN မထည့်ထားရင် ကျော်သွားပြီး error မတက်ပါဘူး)။
+လိုအပ်ရင် LOCLX_TYPE="tcp"၊ LOCLX_PORT="8080"၊ LOCLX_REGION="ap" စသဖြင့် ထပ်ညှိနိုင်ပါတယ်။
+# localxpose.io ဆိုက်
 
 #Ngrok token ထက်ရမယ်
 
