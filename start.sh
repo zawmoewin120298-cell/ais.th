@@ -15,9 +15,14 @@ set -u
 # export VPS_MODE="false"
 # export FASTLY_ORIGIN_SECRET="..."
 # export NGROK_AUTHTOKEN="..."
-# export NGROK_PORT="8880"
+# export NGROK_PORT="8080"
 # export NGROK_PROTO="http"
 # export NGROK_ADDR=""
+# export LOCLX_ACCESS_TOKEN="..."
+# export LOCLX_PORT="8080"
+# export LOCLX_TYPE="http"
+# export LOCLX_ADDR=""
+# export LOCLX_REGION=""
 # export PY_RELAY_ENABLED="false"
 # export PY_RELAY_ARGS="--listen-host 127.0.0.1 --remote-host 127.0.0.1 --remote-port 8444 --sni example.com --insecure"
 
@@ -44,6 +49,7 @@ pkill -x xray 2>/dev/null || true
 pkill -x caddy 2>/dev/null || true
 pkill -x cloudflared 2>/dev/null || true
 pkill -x ngrok 2>/dev/null || true
+pkill -x loclx 2>/dev/null || true
 pkill -x hysteria 2>/dev/null || true
 pkill -x dnstt-server 2>/dev/null || true
 pkill -x openresty 2>/dev/null || true
@@ -142,6 +148,30 @@ if [ -n "${NGROK_AUTHTOKEN:-}" ]; then
     ) &
     sleep 2
     echo "✅ Ngrok started (target: ${NGROK_SCHEME}://${NGROK_TARGET})"
+fi
+
+# =============================================
+# 4c. Start LocalXpose (Optional if LOCLX_ACCESS_TOKEN is set)
+# =============================================
+if [ -n "${LOCLX_ACCESS_TOKEN:-}" ]; then
+    echo "[LocalXpose] Configuring & starting LocalXpose..."
+    LOCLX_TARGET="${LOCLX_ADDR:-127.0.0.1:${LOCLX_PORT:-${APP_PORT}}}"
+    LOCLX_TYPE="${LOCLX_TYPE:-http}"
+    LOCLX_REGION_FLAG=""
+    if [ -n "${LOCLX_REGION:-}" ]; then
+        LOCLX_REGION_FLAG="--region ${LOCLX_REGION}"
+    fi
+
+    (
+        while true; do
+            LOCLX_ACCESS_TOKEN="${LOCLX_ACCESS_TOKEN}" /usr/local/bin/loclx tunnel "${LOCLX_TYPE}" \
+                --to "${LOCLX_TARGET}" ${LOCLX_REGION_FLAG} >> /var/log/loclx.log 2>&1 || true
+            echo "⚠️ LocalXpose exited, retrying in 3s..." >> /var/log/loclx.log
+            sleep 3
+        done
+    ) &
+    sleep 2
+    echo "✅ LocalXpose started (type: ${LOCLX_TYPE}, to: ${LOCLX_TARGET})"
 fi
 
 # =============================================
