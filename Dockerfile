@@ -24,7 +24,7 @@ FROM openresty/openresty:1.25.3.1-0-bookworm-fat
 # =============================================
 # 1. Install Dependencies
 # =============================================
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget unzip openssl ca-certificates \
     python3 python3-requests \
     iptables iproute2 net-tools procps squid \
@@ -38,44 +38,44 @@ RUN apt-get update && apt-get install -y \
 RUN curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
     && apt-get update \
-    && apt-get install -y caddy \
+    && apt-get install -y --no-install-recommends caddy \
     && mkdir -p /etc/caddy \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================
 # 2. Install Xray
 # =============================================
-RUN curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o /tmp/xray.zip \
-    && unzip /tmp/xray.zip -d /usr/local/bin/ \
+RUN curl -fsSL https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o /tmp/xray.zip \
+    && unzip -o /tmp/xray.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/xray \
-    && rm /tmp/xray.zip
+    && rm -f /tmp/xray.zip
 
 # =============================================
 # 3. Install Cloudflared
 # =============================================
-RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
     -o /usr/local/bin/cloudflared \
     && chmod +x /usr/local/bin/cloudflared
 
 # =============================================
 # 4. Install Playit
 # =============================================
-RUN curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 \
+RUN curl -fsSL https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 \
     -o /usr/local/bin/playit \
     && chmod +x /usr/local/bin/playit
 
 # =============================================
 # 4b. Install Ngrok
 # =============================================
-RUN curl -L https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o /tmp/ngrok.tgz \
-    && tar xvzf /tmp/ngrok.tgz -C /usr/local/bin \
+RUN curl -fsSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o /tmp/ngrok.tgz \
+    && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin \
     && chmod +x /usr/local/bin/ngrok \
-    && rm /tmp/ngrok.tgz
+    && rm -f /tmp/ngrok.tgz
 
 # =============================================
 # 4c. Install LocalXpose (loclx)
 # =============================================
-RUN curl -L "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip" -o /tmp/loclx.zip \
+RUN curl -fsSL "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip" -o /tmp/loclx.zip \
     && unzip -o /tmp/loclx.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/loclx \
     && rm -f /tmp/loclx.zip
@@ -83,25 +83,25 @@ RUN curl -L "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip" -
 # =============================================
 # 5. Install Hysteria2
 # =============================================
-RUN curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 \
+RUN curl -fsSL https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 \
     -o /usr/local/bin/hysteria \
     && chmod +x /usr/local/bin/hysteria
 
 # =============================================
 # 6. Install dnstt
 # =============================================
-RUN curl -L https://dnstt.network/dnstt-server-linux-amd64 \
+RUN curl -fsSL https://dnstt.network/dnstt-server-linux-amd64 \
     -o /usr/local/bin/dnstt-server \
     && chmod +x /usr/local/bin/dnstt-server
 
 # =============================================
 # 6b. Install GOST (TLS Tunnel)
 # =============================================
-RUN curl -L https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz \
+RUN curl -fsSL https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz \
     -o /tmp/gost.gz \
     && gunzip -c /tmp/gost.gz > /usr/local/bin/gost \
     && chmod +x /usr/local/bin/gost \
-    && rm /tmp/gost.gz
+    && rm -f /tmp/gost.gz
 
 # Copy SNI-Spoofing-Go binary
 COPY --from=sni-build /out/sni-spoofing /usr/local/bin/sni-spoofing
@@ -111,7 +111,7 @@ RUN chmod +x /usr/local/bin/sni-spoofing
 # 7. Create Directories & Log Dirs
 # =============================================
 RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
-    /etc/nginx/cdn /root/.config/playit_gg /var/log/supervisor \
+    /etc/nginx/cdn /root/.config/playit_gg /root/.localxpose /var/log/supervisor \
     /var/log/squid /var/spool/squid \
     /etc/stunnel /var/run/stunnel /var/log/stunnel /var/log/app
 
@@ -120,16 +120,9 @@ RUN mkdir -p /etc/xray /cache /usr/local/openresty/nginx/html /app /etc/dnstt \
 # =============================================
 RUN openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /app/key.pem -out /app/cert.pem \
-    -subj "/CN=${DOMAIN:-localhost}" \
-    -addext "subjectAltName=DNS:${DOMAIN:-localhost},DNS:localhost,IP:127.0.0.1" \
+    -subj "/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
     -days 36500
-
-# =============================================
-# 8b. Python SNI / SSL Relay & Startup Script
-# =============================================
-COPY ./py_sni_relay.py /app/py_sni_relay.py
-COPY ./start.sh /start.sh
-RUN chmod +x /app/py_sni_relay.py /start.sh
 
 # =============================================
 # 9. Fastly CDN Configuration
@@ -198,7 +191,7 @@ acl CONNECT method CONNECT\n\
 \n\
 http_access deny !Safe_ports\n\
 http_access deny CONNECT !SSL_ports\n\
-http_access allow all\n\
+http_access allow localhost\n\
 http_access deny all\n\
 \n\
 dns_nameservers 8.8.8.8 1.1.1.1\n\
@@ -236,7 +229,7 @@ key = /app/key.pem\n\
 verify = 0\n' > /etc/stunnel/stunnel.conf
 
 # =============================================
-# 9d. Tailscale API Data Fetcher
+# 9d–9f. API Data Fetchers
 # =============================================
 RUN printf 'import json\n\
 import os\n\
@@ -263,12 +256,7 @@ try:\n\
     print(f"[Tailscale] Fetched {len(devices)} devices -> {out_file}")\n\
 except Exception as e:\n\
     print(f"[Tailscale] Fetch failed: {e}")\n' > /app/fetch_tailscale.py \
-    && chmod +x /app/fetch_tailscale.py
-
-# =============================================
-# 9e. Redirect.pizza API Data Fetcher
-# =============================================
-RUN printf 'import json\n\
+    && printf 'import json\n\
 import os\n\
 import requests\n\
 \n\
@@ -295,12 +283,7 @@ try:\n\
     print(f"[Redirect.pizza] Saved {endpoint} -> {out_file}")\n\
 except Exception as e:\n\
     print(f"[Redirect.pizza] Fetch failed: {e}")\n' > /app/fetch_redirect_pizza.py \
-    && chmod +x /app/fetch_redirect_pizza.py
-
-# =============================================
-# 9f. QuanticData API Data Fetcher
-# =============================================
-RUN printf 'import json\n\
+    && printf 'import json\n\
 import os\n\
 import requests\n\
 \n\
@@ -327,10 +310,10 @@ try:\n\
     print(f"[QuanticData] Fetched {endpoint} -> {out_file}")\n\
 except Exception as e:\n\
     print(f"[QuanticData] Fetch failed: {e}")\n' > /app/fetch_quanticdata.py \
-    && chmod +x /app/fetch_quanticdata.py
+    && chmod +x /app/fetch_tailscale.py /app/fetch_redirect_pizza.py /app/fetch_quanticdata.py
 
 # =============================================
-# 10. Copy Configuration Files
+# 10. Copy Configuration Files & Scripts
 # =============================================
 COPY ./config.json /etc/xray/config.json
 COPY ./Caddyfile /etc/caddy/Caddyfile
@@ -340,22 +323,19 @@ COPY ./generic_conf/ /usr/local/openresty/nginx/conf/generic_conf/
 COPY ./src/ /usr/local/openresty/nginx/src/
 COPY ./my-website/ /usr/local/openresty/nginx/html/
 COPY ./hysteria.yaml /app/hysteria.yaml
+COPY ./py_sni_relay.py /app/py_sni_relay.py
+COPY ./start.sh /start.sh
 
 RUN printf '#!/usr/bin/env bash\n\
 set -u\n\
 echo "[Entrypoint] Running QuanticData check..."\n\
 python3 /app/fetch_quanticdata.py || true\n\
-exec "$@"\n' > /entrypoint.sh && chmod +x /entrypoint.sh
-
-RUN chmod 755 /cache
-
-# =============================================
-# 11. Ensure Executable Permissions on /start.sh
-# =============================================
-RUN chmod +x /start.sh /app/py_sni_relay.py
+exec "$@"\n' > /entrypoint.sh \
+    && chmod +x /entrypoint.sh /start.sh /app/py_sni_relay.py \
+    && chmod 755 /cache
 
 # =============================================
-# 12. Ports & Environment
+# 11. Ports & Environment
 # =============================================
 EXPOSE 443 80 8080 2053 2086 8443 8444 8445 10002 10001 10003 3128 1081 8081 443/udp 53/udp
 
@@ -371,7 +351,7 @@ ENV LOCLX_PORT="8080"
 ENV LOCLX_TYPE="http"
 ENV LOCLX_ADDR=""
 ENV LOCLX_REGION=""
-ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
+ENV FASTLY_ORIGIN_SECRET=""
 ENV FASTLY_ENABLED="false"
 ENV VPS_MODE="false"
 ENV DNSTT_DOMAIN=""
@@ -390,13 +370,13 @@ ENV QD_ENDPOINT="public/balance"
 ENV QD_OUTPUT_FILE="/tmp/quanticdata.json"
 
 # =============================================
-# 13. Health Check
+# 12. Health Check
 # =============================================
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -sf http://localhost:8080/health || exit 1
 
 # =============================================
-# 14. Entrypoint
+# 13. Entrypoint
 # =============================================
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/start.sh"]
