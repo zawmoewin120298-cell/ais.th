@@ -1,241 +1,350 @@
-#!/bin/bash
+
+#!/usr/bin/env bash
 set -u
 
 # =============================================
-# Railway V2Ray / Caddy / OpenResty / SNI-SSL Startup Script
+# Railway VPN Multi-Tunnel Server
+# Ngrok + Cloudflare + LocalXpose
+# Xray + Caddy + OpenResty
+# Hysteria2 + DNSTT + Python Relay
 # =============================================
-
-# Railway Environment Variables:
-# export PORT="8080"
-# export TUNNEL_TOKEN="..."
-# export CF_PROTOCOL="http2"
-# export SECRET_KEY="..."
-# export DOMAIN="..."
-# export DNSTT_DOMAIN="..."
-# export VPS_MODE="false"
-# export FASTLY_ORIGIN_SECRET="..."
-# export NGROK_AUTHTOKEN="..."
-# export NGROK_PORT="8080"
-# export NGROK_PROTO="http"
-# export NGROK_ADDR=""
-# export LOCLX_ACCESS_TOKEN="..."
-# export LOCLX_PORT="8080"
-# export LOCLX_TYPE="http"
-# export LOCLX_ADDR=""
-# export LOCLX_REGION=""
-# export PY_RELAY_ENABLED="false"
-# export PY_RELAY_ARGS="--listen-host 127.0.0.1 --remote-host 127.0.0.1 --remote-port 8444 --sni example.com --insecure"
 
 APP_PORT="${PORT:-8080}"
-mkdir -p /var/log /var/log/app /etc/nginx/cdn
+
+mkdir -p /var/log/app /var/log /etc/nginx/cdn
+
+echo "=========================================="
+echo " Starting Railway Multi-Service Server"
+echo " Port: ${APP_PORT}"
+echo "=========================================="
 
 # =============================================
-# 0. Sync Runtime Secrets & Port
+# 0. Environment & Secret Configuration
 # =============================================
-if [ -n "${FASTLY_ORIGIN_SECRET:-}" ] && [ -f /etc/nginx/cdn/fastly-origin-check.conf ]; then
-    sed -i "s/FASTLY_SECRET_KEY_12345/${FASTLY_ORIGIN_SECRET}/g" /etc/nginx/cdn/fastly-origin-check.conf || true
+
+# Support both old and new LocalXpose variable names
+LX_TOKEN="${LX_ACCESS_TOKEN:-${LOCLX_ACCESS_TOKEN:-}}"
+
+# Remove accidental whitespace around token
+LX_TOKEN="$(printf '%s' "$LX_TOKEN" | tr -d '[:space:]')"
+
+# =============================================
+# 1. Sync Runtime Secrets
+# =============================================
+
+if [ -n "${FASTLY_ORIGIN_SECRET:-}" ] && \
+   [ -f /etc/nginx/cdn/fastly-origin-check.conf ]; then
+
+    sed -i "s/FASTLY_SECRET_KEY_12345/${FASTLY_ORIGIN_SECRET}/g" \
+        /etc/nginx/cdn/fastly-origin-check.conf || true
 fi
 
-# OpenResty main config မှာ default 8080 ရှိနေရင် Railway $PORT နဲ့ ညှိမယ်
-if [ -f /usr/local/openresty/nginx/conf/nginx.conf ] && [ "${APP_PORT}" != "8080" ]; then
-    sed -i -E "s/listen[[:space:]]+8080([;[:space:]])/listen ${APP_PORT}\1/g" /usr/local/openresty/nginx/conf/nginx.conf || true
+# Update OpenResty port
+if [ -f /usr/local/openresty/nginx/conf/nginx.conf ]; then
+    if [ "$APP_PORT" != "8080" ]; then
+        sed -i -E \
+        "s/listen[[:space:]]+8080([;[:space:]])/listen ${APP_PORT}\1/g" \
+        /usr/local/openresty/nginx/conf/nginx.conf || true
+    fi
 fi
 
 # =============================================
-# 1. Stop Existing Services (Exact name match)
+# 2. Stop Existing Processes
 # =============================================
-echo "[Init] Stopping any leftover processes..."
-pkill -x xray 2>/dev/null || true
-pkill -x caddy 2>/dev/null || true
-pkill -x cloudflared 2>/dev/null || true
-pkill -x ngrok 2>/dev/null || true
-pkill -x loclx 2>/dev/null || true
-pkill -x hysteria 2>/dev/null || true
-pkill -x dnstt-server 2>/dev/null || true
-pkill -x openresty 2>/dev/null || true
+
+echo "[Init] Cleaning old processes..."
+
+for service in xray caddy cloudflared ngrok loclx hysteria dnstt-server openresty
+do
+    pkill -x "$service" 2>/dev/null || true
+done
+
 sleep 1
 
 # =============================================
-# 2. Start Xray (Check + Auto-Restart Watchdog)
+# 3. Xray
 # =============================================
-echo "[1/7] Starting Xray..."
+
+echo "[Xray] Checking configuration..."
+
 if [ -f /etc/xray/config.json ]; then
-    /usr/local/bin/xray -config /etc/xray/config.json >> /var/log/xray.log 2>&1 &
+
+    /usr/local/bin/xray -config /etc/xray/config.json \
+        >> /var/log/xray.log 2>&1 &
+
     XRAY_PID=$!
+
     sleep 2
 
-    if ! kill -0 "$XRAY_PID" 2>/dev/null; then
-        echo "❌ Xray failed to start. Check /var/log/xray.log"
-        cat /var/log/xray.log
-        exit 1
-    fi
-    echo "✅ Xray started (PID: $XRAY_PID)"
+    if kill -0 "$XRAY_PID" 2>/dev/null; then
+        echo "[Xray] Started successfully"
 
-    (
-        while true; do
-            wait "$XRAY_PID" 2>/dev/null || true
-            echo "⚠️ Xray exited, restarting in 2s..." >> /var/log/xray.log
-            sleep 2
-            /usr/local/bin/xray -config /etc/xray/config.json >> /var/log/xray.log 2>&1 &
-            XRAY_PID=$!
-        done
-    ) &
-else
-    echo "ℹ️ /etc/xray/config.json not found, skipping Xray."
-fi
-
-# =============================================
-# 3. Start Caddy (Check + Auto-Restart Watchdog)
-# =============================================
-echo "[2/7] Starting Caddy..."
-if [ -f /etc/caddy/Caddyfile ]; then
-    caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >> /var/log/caddy.log 2>&1 &
-    CADDY_PID=$!
-    sleep 2
-
-    if ! kill -0 "$CADDY_PID" 2>/dev/null; then
-        echo "⚠️ Caddy failed to start. Check /var/log/caddy.log"
-        cat /var/log/caddy.log
-    else
-        echo "✅ Caddy started (PID: $CADDY_PID)"
         (
             while true; do
-                wait "$CADDY_PID" 2>/dev/null || true
-                echo "⚠️ Caddy exited, restarting in 3s..." >> /var/log/caddy.log
+                wait "$XRAY_PID" 2>/dev/null || true
+
+                echo "[Xray] Restarting..." >> /var/log/xray.log
                 sleep 3
-                caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >> /var/log/caddy.log 2>&1 &
-                CADDY_PID=$!
+
+                /usr/local/bin/xray -config /etc/xray/config.json \
+                    >> /var/log/xray.log 2>&1 &
+
+                XRAY_PID=$!
             done
         ) &
+
+    else
+        echo "[Xray] Failed to start"
+        cat /var/log/xray.log
     fi
 else
-    echo "ℹ️ Caddyfile not found, skipping Caddy."
+    echo "[Xray] Config not found, skipping"
 fi
 
 # =============================================
-# 4. Start Cloudflared (http2 + Auto-Restart)
+# 4. Caddy
 # =============================================
-if [ -n "${TUNNEL_TOKEN:-}" ]; then
-    echo "[3/7] Starting Cloudflared (${CF_PROTOCOL:-http2})..."
+
+echo "[Caddy] Starting..."
+
+if [ -f /etc/caddy/Caddyfile ]; then
+
     (
         while true; do
-            /usr/local/bin/cloudflared tunnel --no-autoupdate --protocol "${CF_PROTOCOL:-http2}" run \
-                --token "${TUNNEL_TOKEN}" >> /var/log/cloudflared.log 2>&1 || true
-            echo "⚠️ Cloudflared exited, retrying in 3s..." >> /var/log/cloudflared.log
+            caddy run \
+                --config /etc/caddy/Caddyfile \
+                --adapter caddyfile \
+                >> /var/log/caddy.log 2>&1 || true
+
+            echo "[Caddy] Restarting in 3 seconds..." \
+                >> /var/log/caddy.log
+
             sleep 3
         done
     ) &
+
     sleep 2
-    echo "✅ Cloudflared started"
+    echo "[Caddy] Process launched"
+else
+    echo "[Caddy] Caddyfile not found, skipping"
 fi
 
 # =============================================
-# 4b. Start Ngrok (Optional if NGROK_AUTHTOKEN is set)
+# 5. Cloudflare Tunnel
 # =============================================
+
+if [ -n "${TUNNEL_TOKEN:-}" ]; then
+
+    echo "[Cloudflared] Starting..."
+
+    (
+        while true; do
+
+            /usr/local/bin/cloudflared tunnel \
+                --no-autoupdate \
+                --protocol "${CF_PROTOCOL:-http2}" \
+                run \
+                --token "$TUNNEL_TOKEN" \
+                >> /var/log/cloudflared.log 2>&1 || true
+
+            echo "[Cloudflared] Restarting in 5 seconds..." \
+                >> /var/log/cloudflared.log
+
+            sleep 5
+        done
+    ) &
+
+    echo "[Cloudflared] Process launched"
+else
+    echo "[Cloudflared] TUNNEL_TOKEN missing, skipping"
+fi
+
+# =============================================
+# 6. Ngrok Tunnel
+# =============================================
+
 if [ -n "${NGROK_AUTHTOKEN:-}" ]; then
-    echo "[Ngrok] Configuring & starting Ngrok..."
-    /usr/local/bin/ngrok config add-authtoken "${NGROK_AUTHTOKEN}" >> /var/log/ngrok.log 2>&1 || true
+
+    echo "[Ngrok] Configuring..."
+
+    /usr/local/bin/ngrok config add-authtoken \
+        "$NGROK_AUTHTOKEN" \
+        >> /var/log/ngrok.log 2>&1 || true
 
     NGROK_TARGET="${NGROK_ADDR:-127.0.0.1:${NGROK_PORT:-${APP_PORT}}}"
     NGROK_SCHEME="${NGROK_PROTO:-http}"
 
     (
         while true; do
-            /usr/local/bin/ngrok "${NGROK_SCHEME}" "${NGROK_TARGET}" --log=stdout >> /var/log/ngrok.log 2>&1 || true
-            echo "⚠️ Ngrok exited, retrying in 3s..." >> /var/log/ngrok.log
-            sleep 3
+
+            echo "[Ngrok] Starting ${NGROK_SCHEME} tunnel..." \
+                >> /var/log/ngrok.log
+
+            /usr/local/bin/ngrok "$NGROK_SCHEME" "$NGROK_TARGET" \
+                --log=stdout \
+                >> /var/log/ngrok.log 2>&1 || true
+
+            echo "[Ngrok] Restarting in 5 seconds..." \
+                >> /var/log/ngrok.log
+
+            sleep 5
         done
     ) &
-    sleep 2
-    echo "✅ Ngrok started (target: ${NGROK_SCHEME}://${NGROK_TARGET})"
+
+    echo "[Ngrok] Process launched"
+else
+    echo "[Ngrok] NGROK_AUTHTOKEN missing, skipping"
 fi
 
 # =============================================
-# 4c. Start LocalXpose (Optional if LOCLX_ACCESS_TOKEN is set)
+# 7. LocalXpose Tunnel
 # =============================================
-if [ -n "${LOCLX_ACCESS_TOKEN:-}" ]; then
-    echo "[LocalXpose] Configuring & starting LocalXpose..."
-    LOCLX_TOKEN_CLEAN="$(printf '%s' "${LOCLX_ACCESS_TOKEN}" | tr -d '[:space:]')"
-    LOCLX_TARGET="${LOCLX_ADDR:-127.0.0.1:${LOCLX_PORT:-${APP_PORT}}}"
-    LOCLX_TYPE="${LOCLX_TYPE:-http}"
-    LOCLX_REGION_FLAG=""
-    if [ -n "${LOCLX_REGION:-}" ]; then
-        LOCLX_REGION_FLAG="--region ${LOCLX_REGION}"
-    fi
+
+if [ -n "$LX_TOKEN" ]; then
+
+    echo "[LocalXpose] Configuring..."
+
+    LX_TARGET="${LOCLX_ADDR:-127.0.0.1:${LOCLX_PORT:-${APP_PORT}}}"
+    LX_TYPE="${LOCLX_TYPE:-http}"
 
     (
+        export LX_ACCESS_TOKEN="$LX_TOKEN"
+
         while true; do
-            LOCLX_ACCESS_TOKEN="${LOCLX_TOKEN_CLEAN}" /usr/local/bin/loclx tunnel "${LOCLX_TYPE}" \
-                --to "${LOCLX_TARGET}" ${LOCLX_REGION_FLAG} 2>&1 \
-                | tee -a /var/log/loclx.log \
-                | grep --line-buffered -iE "https?://|loclx\.io|error|failed|invalid|unauthorized|unauthenticated|limit" || true
-            echo "⚠️ LocalXpose exited, retrying in 3s..." | tee -a /var/log/loclx.log
-            sleep 3
+
+            echo "[LocalXpose] Starting ${LX_TYPE} tunnel..." \
+                >> /var/log/loclx.log
+
+            /usr/local/bin/loclx tunnel "$LX_TYPE" \
+                --to "$LX_TARGET" \
+                >> /var/log/loclx.log 2>&1
+
+            EXIT_CODE=$?
+
+            echo "[LocalXpose] Exited with code ${EXIT_CODE}" \
+                >> /var/log/loclx.log
+
+            echo "[LocalXpose] Retrying in 5 seconds..." \
+                >> /var/log/loclx.log
+
+            sleep 5
         done
     ) &
-    sleep 2
-    echo "✅ LocalXpose started (type: ${LOCLX_TYPE}, to: ${LOCLX_TARGET})"
+
+    echo "[LocalXpose] Process launched"
+else
+    echo "[LocalXpose] LX_ACCESS_TOKEN missing, skipping"
 fi
 
 # =============================================
-# 5. Start Hysteria2 (VPS_MODE=true only)
+# 8. Hysteria2
 # =============================================
-if [ "${VPS_MODE:-false}" = "true" ] && [ -f /app/hysteria.yaml ]; then
-    echo "[4/7] Starting Hysteria2..."
+
+if [ "${VPS_MODE:-false}" = "true" ] && \
+   [ -f /app/hysteria.yaml ]; then
+
+    echo "[Hysteria] Starting..."
+
     (
         while true; do
-            /usr/local/bin/hysteria server -c /app/hysteria.yaml >> /var/log/hysteria.log 2>&1 || true
-            echo "⚠️ Hysteria2 exited, retrying in 3s..." >> /var/log/hysteria.log
-            sleep 3
+
+            /usr/local/bin/hysteria server \
+                -c /app/hysteria.yaml \
+                >> /var/log/hysteria.log 2>&1 || true
+
+            echo "[Hysteria] Restarting..." \
+                >> /var/log/hysteria.log
+
+            sleep 5
         done
     ) &
-    sleep 2
-    echo "✅ Hysteria2 started"
+
+    echo "[Hysteria] Process launched"
 fi
 
 # =============================================
-# 6. Start dnstt (VPS_MODE=true only)
+# 9. DNSTT
 # =============================================
-if [ "${VPS_MODE:-false}" = "true" ] && [ -f /etc/dnstt/server.key ] && [ -n "${DNSTT_DOMAIN:-}" ]; then
-    echo "[5/7] Starting dnstt..."
+
+if [ "${VPS_MODE:-false}" = "true" ] && \
+   [ -f /etc/dnstt/server.key ] && \
+   [ -n "${DNSTT_DOMAIN:-}" ]; then
+
+    echo "[DNSTT] Starting..."
+
     (
         while true; do
+
             /usr/local/bin/dnstt-server \
                 -udp :53 \
                 -privkey-file /etc/dnstt/server.key \
-                -domain "${DNSTT_DOMAIN}" \
-                127.0.0.1:8000 >> /var/log/dnstt.log 2>&1 || true
-            echo "⚠️ dnstt exited, retrying in 3s..." >> /var/log/dnstt.log
-            sleep 3
+                -domain "$DNSTT_DOMAIN" \
+                127.0.0.1:8000 \
+                >> /var/log/dnstt.log 2>&1 || true
+
+            echo "[DNSTT] Restarting..." \
+                >> /var/log/dnstt.log
+
+            sleep 5
         done
     ) &
-    sleep 2
-    echo "✅ dnstt started"
+
+    echo "[DNSTT] Process launched"
 fi
 
 # =============================================
-# 7. Optional Python SNI / SSL Relay
+# 10. Python SNI / SSL Relay
 # =============================================
-if [ "${PY_RELAY_ENABLED:-false}" = "true" ] && [ -f /app/py_sni_relay.py ]; then
-    echo "[6/7] Starting Python SNI/SSL Relay..."
+
+if [ "${PY_RELAY_ENABLED:-false}" = "true" ] && \
+   [ -f /app/py_sni_relay.py ]; then
+
+    echo "[Python Relay] Starting..."
+
     (
         while true; do
-            python3 /app/py_sni_relay.py ${PY_RELAY_ARGS:-} >> /var/log/app/py-sni-relay.log 2>&1 || true
-            echo "⚠️ Python SNI/SSL Relay exited, retrying in 3s..." >> /var/log/app/py-sni-relay.log
-            sleep 3
+
+            python3 /app/py_sni_relay.py \
+                ${PY_RELAY_ARGS:-} \
+                >> /var/log/app/py-sni-relay.log 2>&1 || true
+
+            echo "[Python Relay] Restarting..." \
+                >> /var/log/app/py-sni-relay.log
+
+            sleep 5
         done
     ) &
-    sleep 1
-    echo "✅ Python SNI/SSL Relay started"
+
+    echo "[Python Relay] Process launched"
 fi
 
 # =============================================
-# 8. Start OpenResty (Foreground Main Process)
+# 11. OpenResty Configuration Check
 # =============================================
-echo "[7/7] Validating & starting OpenResty on port ${APP_PORT}..."
-/usr/local/openresty/bin/openresty -t
+
+echo "[OpenResty] Testing configuration..."
+
+if ! /usr/local/openresty/bin/openresty -t; then
+
+    echo "[OpenResty] Configuration ERROR"
+
+    exit 1
+fi
+
 echo "=========================================="
-echo "  All Services Started Successfully!"
+echo " Service startup completed"
+echo " Ngrok:        ${NGROK_AUTHTOKEN:+ENABLED}"
+echo " Cloudflared:  ${TUNNEL_TOKEN:+ENABLED}"
+echo " LocalXpose:   ${LX_TOKEN:+ENABLED}"
+echo " OpenResty:    PORT ${APP_PORT}"
 echo "=========================================="
 
-exec /usr/local/openresty/bin/openresty
+# =============================================
+# 12. OpenResty Main Foreground Process
+# =============================================
+
+echo "[OpenResty] Starting in foreground..."
+
+exec /usr/local/openresty/bin/openresty \
+    -g "daemon off;"
+    
