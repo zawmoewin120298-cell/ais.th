@@ -165,8 +165,7 @@ if [ -n "${LOCLX_ACCESS_TOKEN:-}" ]; then
 
     (
         while true; do
-            /usr/local/bin/loclx account login "${LOCLX_TOKEN_CLEAN}" >> /var/log/loclx.log 2>&1 || true
-            /usr/local/bin/loclx tunnel "${LOCLX_TYPE}" \
+            LOCLX_ACCESS_TOKEN="${LOCLX_TOKEN_CLEAN}" /usr/local/bin/loclx tunnel "${LOCLX_TYPE}" \
                 --to "${LOCLX_TARGET}" ${LOCLX_REGION_FLAG} 2>&1 \
                 | tee -a /var/log/loclx.log \
                 | grep --line-buffered -iE "https?://|loclx\.io|error|failed|invalid|unauthorized|unauthenticated|limit" || true
