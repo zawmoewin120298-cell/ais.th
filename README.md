@@ -1,3 +1,9 @@
+
+#Ngrok token ထက်ရမယ်
+
+NGROK_AUTHTOKEN
+
+
 # Deploy လုပ်ပြီးနောက် စစ်ဆေးရမယ့် အချက်များ
 1. CF_PROTOCOL စစ်ဆေးခြင်း: Startup log ထဲမှာ Starting Cloudflared (http2)... တက်လာတာ သေချာစစ်ပါ (quic ပြန်စမ်းချင်ရင် Railway Variables မှာ CF_PROTOCOL=quic ထည့်ပြီး redeploy လုပ်ရုံပါပဲ)။
 # https://api.quanticdata.io/v1/public/balance
