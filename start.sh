@@ -343,8 +343,6 @@ echo "=========================================="
 # 12. OpenResty Main Foreground Process
 # =============================================
 
-echo "[OpenResty] Starting in foreground..."
+echo "[OpenResty] Starting..."
 
-exec /usr/local/openresty/bin/openresty \
-    -g "daemon off;"
-    
+exec /usr/local/openresty/bin/openresty
