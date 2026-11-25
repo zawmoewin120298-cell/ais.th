@@ -73,6 +73,14 @@ RUN curl -L https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
     && rm /tmp/ngrok.tgz
 
 # =============================================
+# 4c. Install LocalXpose (loclx)
+# =============================================
+RUN curl -L "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip" -o /tmp/loclx.zip \
+    && unzip -o /tmp/loclx.zip -d /usr/local/bin/ \
+    && chmod +x /usr/local/bin/loclx \
+    && rm -f /tmp/loclx.zip
+
+# =============================================
 # 5. Install Hysteria2
 # =============================================
 RUN curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 \
@@ -358,6 +366,11 @@ ENV NGROK_AUTHTOKEN=""
 ENV NGROK_PORT="8080"
 ENV NGROK_PROTO="http"
 ENV NGROK_ADDR=""
+ENV LOCLX_ACCESS_TOKEN=""
+ENV LOCLX_PORT="8080"
+ENV LOCLX_TYPE="http"
+ENV LOCLX_ADDR=""
+ENV LOCLX_REGION=""
 ENV FASTLY_ORIGIN_SECRET="FASTLY_SECRET_KEY_12345"
 ENV FASTLY_ENABLED="false"
 ENV VPS_MODE="false"
