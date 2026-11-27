@@ -14,7 +14,10 @@
     "initStreamReceiveWindow": 16777216,
     "maxStreamReceiveWindow": 16777216,
     "initConnReceiveWindow": 33554432,
-    "maxConnReceiveWindow": 33554432
+    "maxConnReceiveWindow": 33554432,
+    "maxIdleTimeout": "30s",
+    "keepAlivePeriod": "10s",
+    "disablePathMTUDiscovery": false
   },
   "bandwidth": {
     "up": "200 mbps",
@@ -23,5 +26,12 @@
   "auth": {
     "type": "password",
     "password": "zawmoewin"
+  },
+  "masquerade": {
+    "type": "proxy",
+    "proxy": {
+      "url": "https://bing.com/",
+      "rewriteHost": true
+    }
   }
 }
