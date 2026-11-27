@@ -1,25 +1,27 @@
-listen: :8443
-
-tls:
-  cert: /app/cert.pem
-  key: /app/key.pem
-
-auth:
-  type: password
-  password: "MyStrongPassword123"
-
-masquerade:
-  type: proxy
-  proxy:
-    url: https://news.ycombinator.com/
-    rewriteHost: true
-
-bandwidth:
-  up: 100 mbps
-  down: 500 mbps
-
-quic:
-  initStreamReceiveWindow: 8388608
-  maxStreamReceiveWindow: 8388608
-  initConnReceiveWindow: 20971520
-  maxConnReceiveWindow: 20971520
+{
+  "listen": ":443",
+  "tls": {
+    "cert": "/etc/hysteria/server.crt",
+    "key": "/etc/hysteria/server.key"
+  },
+  "obfs": {
+    "type": "salamander",
+    "salamander": {
+      "password": "zawmoewin"
+    }
+  },
+  "quic": {
+    "initStreamReceiveWindow": 16777216,
+    "maxStreamReceiveWindow": 16777216,
+    "initConnReceiveWindow": 33554432,
+    "maxConnReceiveWindow": 33554432
+  },
+  "bandwidth": {
+    "up": "200 mbps",
+    "down": "1000 mbps"
+  },
+  "auth": {
+    "type": "password",
+    "password": "zawmoewin"
+  }
+}
